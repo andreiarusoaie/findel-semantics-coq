@@ -80,20 +80,6 @@ Inductive Primitive :=
 | If        : Address -> Primitive -> Primitive -> Primitive
 | Timebound : nat -> nat -> Primitive ->           Primitive.
 
-(* Helper function: retrieve the primitive head *)
-Definition head (p : Primitive) : string  :=
-  match p with
-  | Zero => "zero"
-  | One _ => "one"
-  | Scale _ _ => "scale"
-  | ScaleObs _ _ => "scaleobs"
-  | Give _ => "give"
-  | And _ _ => "and"
-  | Or _ _ => "or"
-  | If _ _ _ => "if"
-  | Timebound _ _ _ => "timebound"
-  end.
-
 
 (** ** Additional primitives
 
