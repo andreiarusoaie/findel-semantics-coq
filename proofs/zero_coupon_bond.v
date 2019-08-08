@@ -124,7 +124,7 @@ Lemma zcb_bob_is_paid_or_claims_payment :
       (zcb alice bob ctr_id dsc_id time period) s1 bob =
     Some result ->
     (exists ctr,
-        % ctr ∈ (res_contracts result) | alice --> bob | (Scale 11 (One USD)) %)
+        % ctr ∈ (res_contracts result) | alice --> bob | (At (time + period) (Scale 11 (One USD))) %)
     \/
     exists tr,
       # tr ∈ (res_ledger result) | ctr_id | alice --> bob | 11 $ USD #.
@@ -149,7 +149,7 @@ Lemma zcb_bob_is_paid_or_claims_payment_step :
     bob <> 0 ->
     exists result,
     (exists ctr,
-      % ctr ∈ (res_contracts result) | alice --> bob | (Scale 11 (One USD)) %)
+      % ctr ∈ (res_contracts result) | alice --> bob | (At (time + period) (Scale 11 (One USD))) %)
     \/
     exists tr,
       # tr ∈ (res_ledger result) | ctr_id | alice --> bob | 11 $ USD #.
@@ -180,7 +180,7 @@ Lemma zcb_bob_is_paid_or_claims_payment_steps :
     bob <> 0 ->
     exists result,
     (exists ctr,
-      % ctr ∈ (res_contracts result) | alice --> bob | (Scale 11 (One USD)) %)
+      % ctr ∈ (res_contracts result) | alice --> bob | At (time + period) (Scale 11 (One USD)) %)
     \/
     exists tr,
       # tr ∈ (res_ledger result) | ctr_id | alice --> bob | 11 $ USD #.

@@ -559,6 +559,17 @@ Ltac contradict_hyp H :=
   simpl in H; destruct H as [H | H]; try contradiction; try inversion H.
 
 
+Ltac case_analysis_2 H :=
+  let H' := fresh "H" in 
+  match goal with
+  | H : match (if ?c then _ else _)  with
+        | Some _ => _
+        | None => _
+        end = _ |- _
+    => case_eq c; intros H'; rewrite H' in H; try inversion H; clear H
+  end.
+
+
 Lemma exists_step_in_steps:
   forall s1 s2 ctr,
     In ctr (m_contracts s1) ->

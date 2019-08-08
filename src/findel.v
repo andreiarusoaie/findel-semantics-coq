@@ -265,7 +265,7 @@ Fixpoint execute_primitive
       if (t0 <? time)
       then (execute_primitive p scale I O balance time gtw ctr_id dsc_id nextId ledger)
       else Some (result balance
-                        [(finctr (S nextId) dsc_id p I O O scale)] (S (S nextId)) ledger)
+                        [(finctr (S nextId) dsc_id (Timebound t0 t1 p) I O O scale)] (S (S nextId)) ledger)
   | Or c1 c2 =>
     Some (result balance
                  [(finctr (S nextId) dsc_id (Or c1 c2) I O O scale)] (S (S nextId)) ledger)

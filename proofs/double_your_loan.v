@@ -32,7 +32,7 @@ Lemma bob_requests_double_loan_from_alice :
       (double_your_loan_ctr alice bob ctr_id dsc_id t0) s1 bob =
     Some result ->
     exists ctr,
-      % ctr ∈ (res_contracts result) | alice --> bob | (Scale 2 (One EUR)) %.
+      % ctr ∈ (res_contracts result) | alice --> bob | (Timebound t0 INF (Scale 2 (One EUR))) %.
 Proof.
   intros.
   exec_double_your_loan H.
@@ -40,7 +40,7 @@ Proof.
   - inversion H1.
   - case_eq (0 <? m_global_time s1); intros H2; rewrite H2 in H1.
     case_eq (INF <? m_global_time s1); intros H3; rewrite H3 in H1.
-    + inversion H. inversion H1.
+    + inversion H1.
     + inversion H1.
       simpl. 
       eexists.
@@ -65,7 +65,7 @@ Lemma bob_requests_double_loan_from_alice_step :
     s1 → s2 ⊢ ctr_id ->
     bob <> 0 ->
     exists result ctr,
-      % ctr ∈ (res_contracts result) | alice --> bob | (Scale 2 (One EUR)) %.
+      % ctr ∈ (res_contracts result) | alice --> bob | (Timebound t0 INF (Scale 2 (One EUR))) %.
 Proof.
   intros until 1.
   step_intro.
@@ -93,7 +93,7 @@ Theorem bob_requests_double_loan_from_alice_steps :
     s1 ⇓ s2 ⊢ ctr_id ->
     bob <> 0 ->
     exists result ctr,
-      % ctr ∈ (res_contracts result) | alice --> bob | (Scale 2 (One EUR)) %.
+      % ctr ∈ (res_contracts result) | alice --> bob | (Timebound t0 INF (Scale 2 (One EUR))) %.
 Proof.
   intros.
   assert (H' := H); auto.
@@ -108,24 +108,22 @@ Lemma alice_requests_loan_from_bob :
     exec_ctr_in_state_with_owner
       (double_your_loan_ctr alice bob ctr_id dsc_id t0) s1 bob =
     Some result ->
+    (exists ctr,
+      % ctr ∈ (res_contracts result) | alice --> bob | (Timebound 0 t0 (Or (Give (One USD)) (Give (One EUR)))) %)
+    \/
     exists ctr,
-      % ctr ∈ (res_contracts result) | alice --> bob | Or (Give (One USD)) (Give (One EUR)) %.
+      % ctr ∈ (res_contracts result) | alice --> bob | (Or (Give (One USD)) (Give (One EUR))) %.
 Proof.
   intros.
   exec_double_your_loan H.
-  case_eq (t0 <? m_global_time s1); intros; rewrite H in H1.
-  - inversion H1.
-  - case_eq (0 <? m_global_time s1); intros; rewrite H0 in H1.
-    + case_eq (INF <? m_global_time s1); intros; rewrite H2 in H1.
-      * inversion H1.
-      * inversion H1. subst result0. simpl.
-        eexists. split. left. trivial. simpl.
-        try repeat split; trivial.
-    + case_eq (INF <? m_global_time s1); intros; rewrite H2 in H1.
-      * inversion H1.
-      * inversion H1. subst result0. simpl.
-        eexists. split. left. trivial. simpl.
-        try repeat split; trivial.
+  case_analysis H1.
+  case_analysis H2; case_analysis H3; simpl.
+  - right. eexists. split; trivial.
+    + left. trivial.
+    + simpl. repeat split; trivial. 
+  - left. eexists. split; trivial.
+    + left. trivial.
+    + simpl. repeat split; trivial.
 Qed.
 
 
@@ -134,7 +132,10 @@ Lemma alice_requests_loan_from_bob_step :
     In (double_your_loan_ctr alice bob ctr_id dsc_id t0) (m_contracts s1) ->
     s1 → s2 ⊢ ctr_id ->
     bob <> 0 ->
-    exists result ctr,
+    exists result,
+    (exists ctr,
+        % ctr ∈ (res_contracts result) | alice --> bob | (Timebound 0 t0 (Or (Give (One USD)) (Give (One EUR)))) %) \/
+    exists ctr,
       % ctr ∈ (res_contracts result) | alice --> bob | Or (Give (One USD)) (Give (One EUR)) %.
 Proof.
   intros until 1.
@@ -162,7 +163,10 @@ Lemma alice_requests_loan_from_bob_steps :
     In (double_your_loan_ctr alice bob ctr_id dsc_id t0) (m_contracts s1) ->
     s1 ⇓ s2 ⊢ ctr_id ->
     bob <> 0 ->
-    exists result ctr,
+    exists result,
+    (exists ctr,
+        % ctr ∈ (res_contracts result) | alice --> bob | (Timebound 0 t0 (Or (Give (One USD)) (Give (One EUR)))) %) \/
+    exists ctr,
       % ctr ∈ (res_contracts result) | alice --> bob | Or (Give (One USD)) (Give (One EUR)) %.
 Proof.
   intros.
