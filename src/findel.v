@@ -6,27 +6,11 @@ Import ListNotations.
 Scheme Equality for list.
 
 
-(** * Initial parameters
-
-These are the initial parameter values used by the creators of Findel in their implementation.
- *)
-
-(**
-
-1. Delta:  represents a value in seconds and it is used adjust the interval for accepting a transaction.
-
-2. INF is an alias for infinite and it is encoded using a simple axiom in Coq.
- *)
-
 Definition Δ := 30.
 Parameter INF : nat.
 Axiom infinite : forall n, n < INF.
 Definition FRESHNESS := 2.
 
-(** * Currencies
-
-For now, we only add support for USD and EUR as currencies. Other currencies can be easily added on demand. We define a simple function for decidable equality of currencies.
-*)
 
 Inductive Currency :=
 | USD  : Currency
@@ -48,22 +32,11 @@ Definition beq_currency (c c' : Currency) :=
   | _, _ => false
   end.
 
-(** * Addresses. Time. Balance.
 
-Addresses are encoded as natural numbers in Coq.
-In a blockchain implementation these should be 256-bit representation of numbers.
-
-In our setting, the time is modelled as a natural number which represents the number of seconds. 
-
-In addition, the balance is a map from pairs (address, currency) to an amount.
-
-*)
 Definition Address := nat. (* convention: 0 stands for 0x0 *)
 Definition Time := nat.
+
 Definition Balance := Address -> Currency -> Z.
-Definition Id := nat.
-
-
 Definition update (balance : Balance) (a : Address)
            (c : Currency) (amount : Z): Balance :=
   fun (x : Address) (y : Currency) =>
@@ -71,12 +44,6 @@ Definition update (balance : Balance) (a : Address)
     then amount
     else (balance x y).
 
-
-(** * Primitives
-
-This is the list of primitives of Findel (Financial Derivatives Language): a financial domain specific language. 
-
-*)
 
 Inductive Primitive :=
 (* basic primitives *)
@@ -91,12 +58,6 @@ Inductive Primitive :=
 | If        : Address -> Primitive -> Primitive -> Primitive
 | Timebound : nat -> nat -> Primitive ->           Primitive.
 
-
-(** ** Additional primitives
-
-The list of the additional primitives is defined below. Note that these are just sugar syntax for other combinations of primitives.
-
- *)
 Definition At (t : nat) (p : Primitive) := Timebound (t - Δ) (t + Δ) p.
 Definition Before (t : nat) (p : Primitive) := Timebound 0 t p.
 Definition After (t : nat) (p : Primitive) := Timebound t INF p.
@@ -104,35 +65,20 @@ Definition Sell (n : nat) (c : Currency) (p : Primitive)
   := And (Give (Scale n (One c))) p.
 
 
-
-(** * Gateways.
-
-A `gateway' is the technical solution found by the designers of Findel to overcome a communication issue of smart contracts (i.e., during the execution of a contract is hard to provide external input to the contract). Gateways allow Findel contracts to connect to other parties that provide metainformation. For example, one can connect to an address through the gateway and ask for the current exchange rate. Gateways have been implemented in Solidity as external Ethereum smart contracts.
-
-In our setting, the gateway is modelled using a simple map from addresses to a natural number. The map holds for each address some metainformation which is a number. Depending on what address we interogate for metainformation, we can distinguish what the returned number represents.
-Ideally, the gateway updates the information within a given interval. 
-
-*)
-
 Record Gateway :=
   gateway {
       gtw_addr : Address;
       gtw_value : nat;
       gtw_timestamp : nat
     }.
-
-
 Definition refresh (g : Gateway) (v' : nat) : Gateway :=
   match g with
   | gateway a v f => gateway a v' 0
   end.
-
 Definition update_fresh (g : Gateway) (t : Time) : Gateway :=
   match g with
   | gateway a v f => gateway a v t
   end.
-
-
 Fixpoint gateway_time_update
          (g : list Gateway) (t : Time) : list Gateway :=
   match g with
@@ -140,44 +86,20 @@ Fixpoint gateway_time_update
     (update_fresh gtw t) :: (gateway_time_update rest t)
   | [] => []
   end.
+Fixpoint query(gateway : list Gateway)(a : Address)(now : Time) :=
+  match gateway with
+  | (gateway addr val timestamp) :: rest =>
+    if (beq_nat a addr)
+    then if (leb now (timestamp + FRESHNESS))
+         then Some val
+         else None
+    else query rest a now
+  | [] => None
+  end.
 
 
 
-(** * Contract descriptions
-    Contract descriptions are pairs from identifiers to primitives.
-*)
-
-
-Record ContractDescription :=
-  description {
-      dsc_id : Id;
-      dsc_prim : Primitive;
-      dsc_scale : nat;
-      dsc_gateway_of : list Gateway;
-      dsc_valid_from : Time;
-      dsc_valid_until : Time;
-    }.
-
-Definition ContractDescriptions := nat -> ContractDescription.
-
-
-(** * Findel Contracts
-  According to~\cite{findel}, findel contracts are tuples $(D,I,O)$, where $D$ is the description identifier, $I$ is the issuer, $O$ is the owner. However, in the Solidity implementation, the tuple is enriched with new fields: a proposed owner, a number represting the scale of the contract, and the time interval [begin, end] when the current contract can be executed. In Coq we encode all these as shown below.
-
-*)
-
-Record FinContract :=
-  finctr {
-      ctr_id : Id;
-      ctr_desc_id : Id;
-      ctr_primitive : Primitive;
-      ctr_issuer : Address;
-      ctr_owner : Address;
-      ctr_proposed_owner : Address;
-      ctr_scale : nat;
-    }.
-
-
+Definition Id := nat.
 Record Transaction :=
   transaction {
       tr_id : Id;
@@ -188,8 +110,16 @@ Record Transaction :=
       tr_currency : Currency;
       tr_timestamp : Time 
     }.
-
-
+Record FinContract :=
+  finctr {
+      ctr_id : Id;
+      ctr_desc_id : Id;
+      ctr_primitive : Primitive;
+      ctr_issuer : Address;
+      ctr_owner : Address;
+      ctr_proposed_owner : Address;
+      ctr_scale : nat;
+    }.
 Record Result :=
   result {
       res_balance : Balance;
@@ -197,18 +127,6 @@ Record Result :=
       res_next : Id;
       res_ledger : list Transaction
     }.
-
-
-Fixpoint get_external(gateway : list Gateway)(a : Address)(now : Time) :=
-  match gateway with
-  | (gateway addr val timestamp) :: rest =>
-    if (beq_nat a addr)
-    then if (leb now (timestamp + FRESHNESS))
-         then Some val
-         else None
-    else get_external rest a now
-  | [] => None
-  end.
 
 
 (** * Executing primitives recursively
@@ -244,7 +162,7 @@ Fixpoint execute_primitive
   | Scale k c =>
     (execute_primitive c (scale * k) I O balance time gtw ctr_id dsc_id nextId ledger)
   | ScaleObs addr c =>
-    match (get_external gtw addr time) with
+    match (query gtw addr time) with
     | None => None
     | Some k =>
       (execute_primitive c (scale * k) I O balance time gtw ctr_id dsc_id nextId ledger)
@@ -262,7 +180,7 @@ Fixpoint execute_primitive
       end
     end
   | If addr c1 c2 =>
-    match (get_external gtw addr time) with
+    match (query gtw addr time) with
     | None => None
     | Some v =>
       if beq_nat v 0
@@ -281,6 +199,19 @@ Fixpoint execute_primitive
     Some (result balance
                  [(finctr (S nextId) dsc_id (Or c1 c2) I O O scale)] (S (S nextId)) ledger)
   end.
+
+
+Record ContractDescription :=
+  description {
+      dsc_id : Id;
+      dsc_prim : Primitive;
+      dsc_scale : nat;
+      dsc_gateway_of : list Gateway;
+      dsc_valid_from : Time;
+      dsc_valid_until : Time;
+    }.
+
+Definition ContractDescriptions := nat -> ContractDescription.
 
 
 
