@@ -28,12 +28,22 @@ For now, we only add support for USD and EUR as currencies. Other currencies can
 *)
 
 Inductive Currency :=
-| USD : Currency
-| EUR : Currency.
+| USD  : Currency
+| EUR  : Currency
+| GBP  : Currency
+| JPY  : Currency
+| CNY  : Currency
+| SGD  : Currency
+| NONE : Currency.
 Definition beq_currency (c c' : Currency) :=
   match c, c' with
-  | USD, USD => true
-  | EUR, EUR => true
+  | USD , USD  => true
+  | EUR , EUR  => true
+  | GBP , GBP  => true
+  | JPY , JPY  => true
+  | CNY , CNY  => true
+  | SGD , SGD  => true
+  | NONE, NONE => true
   | _, _ => false
   end.
 
