@@ -41,7 +41,7 @@ Lemma exchange_alice_gets_paid_by_bob :
 Proof.
   intros.
   exec_exchange H.
-  case_eq (get_external (m_gateway s1) EXCHANGE_ADDR_EUR_TO_USD (m_global_time s1)); intros; rewrite H in H1; try inversion H1; clear H1.
+  case_eq (query (m_gateway s1) EXCHANGE_ADDR_EUR_TO_USD (m_global_time s1)); intros; rewrite H in H1; try inversion H1; clear H1.
     eexists. simpl.
     split.
     + right. left. trivial.
@@ -95,7 +95,7 @@ Qed.
 
 
 Definition check_gateway (s : State) :=
-  get_external (m_gateway s) EXCHANGE_ADDR_EUR_TO_USD (m_global_time s).
+  query (m_gateway s) EXCHANGE_ADDR_EUR_TO_USD (m_global_time s).
 
 
 
@@ -108,7 +108,7 @@ Lemma exchange_bob_gets_paid_by_alice :
 Proof.
   intros.
   exec_exchange H.
-  case_eq (get_external (m_gateway s1) EXCHANGE_ADDR_EUR_TO_USD (m_global_time s1)); intros; rewrite H in H2; try inversion H2; clear H2.
+  case_eq (query (m_gateway s1) EXCHANGE_ADDR_EUR_TO_USD (m_global_time s1)); intros; rewrite H in H2; try inversion H2; clear H2.
     eexists. simpl.
     split.
     + left. trivial.

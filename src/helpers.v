@@ -100,7 +100,7 @@ Proof.
   - exists [(transaction next ctr_id0 issuer owner scale c time)].
     trivial.
   - eapply IHprimitive. exact H1.
-  - case_eq (get_external gateway0 a time); intros; rewrite H in H1.
+  - case_eq (query gateway0 a time); intros; rewrite H in H1.
     + eapply IHprimitive. exact H1.
     + inversion H1.
   - eapply IHprimitive in H1; trivial.
@@ -123,7 +123,7 @@ Proof.
     + inversion H1.
     + inversion H1.
   - exists []. simpl. trivial.
-  - case_eq (get_external gateway0 a time); intros; rewrite H in H1.
+  - case_eq (query gateway0 a time); intros; rewrite H in H1.
     case_eq (n =? 0); intros; rewrite H0 in H1.
     eapply IHprimitive2. exact H1.
     eapply IHprimitive1. exact H1.
@@ -178,7 +178,7 @@ Proof.
   - eapply IHprimitive. apply H3.
     unfold not in *. intros. apply H0. simpl. trivial.
     unfold not in *. intros. apply H1. simpl. trivial.
-  - case_eq (get_external gateway0 a time); intros; rewrite H in H3; try inversion H3.
+  - case_eq (query gateway0 a time); intros; rewrite H in H3; try inversion H3.
     eapply IHprimitive. exact H3.
     unfold not in *. intros. apply H0. simpl. trivial.
     unfold not in *. intros. apply H1. simpl. trivial.
@@ -201,7 +201,7 @@ Proof.
     -- unfold not in *. intros. apply H0. simpl. left. trivial.
     -- unfold not in *. intros. apply H1. simpl. left. trivial.
   - contradict H1. simpl. trivial. 
-  - case_eq (get_external gateway0 a time); intros; rewrite H in H3; try inversion H3.
+  - case_eq (query gateway0 a time); intros; rewrite H in H3; try inversion H3.
     -- destruct n. simpl in *.
     + eapply IHprimitive2. exact H3.
       unfold not in *. intros. apply H0. right. trivial.
@@ -227,7 +227,7 @@ Proof.
   - omega.
   - inversion H. omega.
   - eapply IHprimitive. exact H.
-  - case_eq (get_external gateway0 a time); intros; rewrite H0 in H.
+  - case_eq (query gateway0 a time); intros; rewrite H0 in H.
     eapply IHprimitive. exact H.
     inversion H.
   - eapply IHprimitive. exact H.
@@ -244,7 +244,7 @@ Proof.
     + inversion H.
     + inversion H.
   - inversion H. omega.
-  - case_eq (get_external gateway0 a time); intros; rewrite H0 in H.
+  - case_eq (query gateway0 a time); intros; rewrite H0 in H.
     case_eq (n =? 0); intros; rewrite H1 in H.
     + eapply IHprimitive2. exact H.
     + eapply IHprimitive1. exact H.
@@ -399,7 +399,7 @@ Lemma primitive_execution_generates_fresh_contracts:
 Proof.
   induction primitive; intros; simpl in H; inversion H; clear H; subst; try contradiction.
   - eapply IHprimitive; eauto.
-  - case_eq (get_external gateway0 a time); intros; rewrite H in H2.
+  - case_eq (query gateway0 a time); intros; rewrite H in H2.
     + eapply IHprimitive; eauto.
     + inversion H2.
   - eapply IHprimitive; eauto.
@@ -422,7 +422,7 @@ Proof.
   - simpl in H0.
     destruct H0 as [H0 | H0]; try contradiction.
     subst ctr. simpl. omega.
-  - case_eq (get_external gateway0 a time); intros; rewrite H in H2; try inversion H2.
+  - case_eq (query gateway0 a time); intros; rewrite H in H2; try inversion H2.
     case_eq n; intros; subst n; simpl in H3.
     + eapply IHprimitive2 in H3. exact H3. trivial.
     + eapply IHprimitive1 in H3. exact H3. trivial.
@@ -605,8 +605,8 @@ Qed.
 
 Lemma gateway_is_consistent:
   forall gtw addr t1 t2 v1 v2,
-    get_external gtw addr t1 = Some v1 ->
-    get_external gtw addr t2 = Some v2 ->
+    query gtw addr t1 = Some v1 ->
+    query gtw addr t2 = Some v2 ->
     v1 = v2.
 Proof.
   induction gtw; intros; simpl in *. 
@@ -650,11 +650,11 @@ Proof.
 Qed.
     
 
-Lemma get_external_consistent:
+Lemma query_consistent:
   forall g addr t t' v,
-    get_external g addr t = Some v ->
+    query g addr t = Some v ->
     t' - t <= FRESHNESS ->
-    get_external (gateway_time_update g (S t)) addr t' = Some v.
+    query (gateway_time_update g (S t)) addr t' = Some v.
 Proof.
   induction g; intros; simpl.
   - inversion H.
@@ -679,13 +679,13 @@ Lemma gateway_is_consistent_on_step:
   forall s1 s2 addr v,
     step s1 s2 ->
     gateway_stays_fresh s1 s2 ->
-    get_external (m_gateway s1) addr (m_global_time s1) = Some v ->
-    get_external (m_gateway s2) addr (m_global_time s2) = Some v.
+    query (m_gateway s1) addr (m_global_time s1) = Some v ->
+    query (m_gateway s2) addr (m_global_time s2) = Some v.
 Proof.
   intros.
   induction H; try subst s2; trivial.
   simpl.
-  apply get_external_consistent; trivial.
+  apply query_consistent; trivial.
   simpl.
   unfold FRESHNESS.
   case_eq (m_global_time s1); intros; omega.
@@ -840,8 +840,8 @@ Lemma gateway_is_consistent_on_steps:
   forall s1 s2 addr v,
     steps s1 s2 ->
     gateway_stays_fresh s1 s2 -> 
-    get_external (m_gateway s1) addr (m_global_time s1)  = Some v ->
-    get_external (m_gateway s2) addr (m_global_time s2)  = Some v.
+    query (m_gateway s1) addr (m_global_time s1)  = Some v ->
+    query (m_gateway s2) addr (m_global_time s2)  = Some v.
 Proof.
   intros.
   induction H.
