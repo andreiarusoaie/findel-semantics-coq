@@ -1,4 +1,5 @@
 Require Import String.
+Require Import ZArith.
 Require Import List.
 Require Import Omega.
 Import ListNotations.
@@ -59,12 +60,12 @@ In addition, the balance is a map from pairs (address, currency) to an amount.
 *)
 Definition Address := nat. (* convention: 0 stands for 0x0 *)
 Definition Time := nat.
-Definition Balance := Address -> Currency -> nat.
+Definition Balance := Address -> Currency -> Z.
 Definition Id := nat.
 
 
 Definition update (balance : Balance) (a : Address)
-           (c : Currency) (amount : nat): Balance :=
+           (c : Currency) (amount : Z): Balance :=
   fun (x : Address) (y : Currency) =>
     if (andb (Nat.eqb x a) (beq_currency c y))
     then amount
@@ -222,7 +223,7 @@ The function outputs a tuple consisting of:
 The second component of the tuple is not empty in two situations: either Or is the current primitive to be executed; or Timebound t0 t1 is the current primitive and the current time is less than t0.
 If all subcontracts result in chaging the balance of the parties, then
 
-*)
+*) 
 Fixpoint execute_primitive
          (P:Primitive) (scale:nat) (I O : Address)
          (balance : Balance) (time : Time) (gtw : list Gateway)
@@ -234,8 +235,8 @@ Fixpoint execute_primitive
     (*    if (Nat.leb 0 (balance I currency - scale)) *)
     (*then*)
     Some (result
-            (update (update balance I currency ((balance I currency) - scale))
-                    O currency ((balance O currency) + scale))
+            (update (update balance I currency ((balance I currency) - (Z_of_nat scale)))
+                    O currency ((balance O currency) + (Z_of_nat scale)))
             [] (S nextId)
             ((transaction nextId ctr_id I O scale currency time) :: ledger)
          )
