@@ -290,31 +290,31 @@ Definition next_id_is_fresh (state : State) :=
 Definition exec_ctr_in_state_with_owner
            (ctr : FinContract) (state : State) (owner : Address) :=
   execute (ctr_primitive ctr)
-                    (ctr_scale ctr)
-                    (ctr_issuer ctr)
-                    owner
-                    (m_balance state)
-                    (m_global_time state)
-                    (m_gateway state)
-                    (ctr_id ctr)
-                    (ctr_desc_id ctr)
-                    (m_fresh_id state)
-                    (m_ledger state).
+          (ctr_scale ctr)
+          (ctr_issuer ctr)
+          owner
+          (m_balance state)
+          (m_global_time state)
+          (m_gateway state)
+          (ctr_id ctr)
+          (ctr_desc_id ctr)
+          (m_fresh_id state)
+          (m_ledger state).
 
 
 Definition exec_prim_ctr_in_state_with_owner
            (p : Primitive) (ctr : FinContract) (state : State) (owner : Address) :=
   execute p
-                    (ctr_scale ctr)
-                    (ctr_issuer ctr)
-                    owner
-                    (m_balance state)
-                    (m_global_time state)
-                    (m_gateway state)
-                    (ctr_id ctr)
-                    (ctr_desc_id ctr)
-                    (m_fresh_id state)
-                    (m_ledger state).
+          (ctr_scale ctr)
+          (ctr_issuer ctr)
+          owner
+          (m_balance state)
+          (m_global_time state)
+          (m_gateway state)
+          (ctr_id ctr)
+          (ctr_desc_id ctr)
+          (m_fresh_id state)
+          (m_ledger state).
 
 
 Definition append_new_ctr_to_state (ctr : FinContract) (state1 : State) :=
@@ -350,7 +350,6 @@ Inductive step (state1 state2 : State) : Prop  :=
                             issuer
                             proposed_owner
                             (dsc_scale dsc) ->
-      consistent_description dsc ->
       next_id_is_fresh state1 ->
       state2 = append_new_ctr_to_state new_contract state1 ->
       step state1 state2

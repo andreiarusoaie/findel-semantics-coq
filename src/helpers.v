@@ -54,9 +54,9 @@ Proof.
   intros s1 s2 ctr ctr' H.
   revert ctr ctr'.
   induction H; intros; subst s2.
-  - unfold append_new_ctr_to_state in H11.
-    simpl in H11.
-    destruct H11 as [H11 | H11]; try inversion H11; try contradiction.
+  - unfold append_new_ctr_to_state in H10.
+    simpl in H10.
+    destruct H10 as [H10 | H10]; try inversion H10; try contradiction.
   - simpl in H12, H13.
     destruct H12 as [H12 | H12]; try contradiction.
     destruct H13 as [H13 | H13]; try contradiction.
@@ -442,18 +442,18 @@ Lemma consistent_ids_step :
 Proof.
   intros s s' H.
   induction H; unfold consistent_ctr_ids in *; intros.
-  - unfold append_new_ctr_to_state in H4.
-    rewrite H4 in H6, H7.
-    simpl in H6, H7.
-    destruct H6 as [H6 | H6]; destruct H7 as [H7 | H7].
+  - unfold append_new_ctr_to_state in H3.
+    rewrite H3 in H5, H6.
+    simpl in H5, H6.
+    destruct H5 as [H5 | H5]; destruct H6 as [H6 | H6].
     + subst x y. trivial.
-    + clear H H0 H2 H4.  subst new_contract x. simpl in H8. exfalso.
-      unfold next_id_is_fresh in H3. rewrite H8 in H3.
-      apply consistent_ctr_ids_in_state in H3. contradiction.
-    + clear H H0 H2 H4.  subst new_contract y. simpl in H8. exfalso.
-      unfold next_id_is_fresh in H3. rewrite <- H8 in H3.
-      apply consistent_ctr_ids_in_state in H3. contradiction.
-    + apply H5; trivial.
+    +  subst new_contract x. simpl in H7. exfalso.
+      unfold next_id_is_fresh in H2. rewrite H7 in H2. simpl in H2.
+      apply consistent_ctr_ids_in_state in H2. contradiction.
+    + subst new_contract y. simpl in H7. exfalso.
+      unfold next_id_is_fresh in H2. rewrite <- H7 in H2.
+      apply consistent_ctr_ids_in_state in H2. contradiction.
+    + apply H4; trivial.
   - subst s'. simpl in H8, H9.
     apply in_app_or in H9.
     apply in_app_or in H8.
@@ -497,8 +497,8 @@ Proof.
   induction H; intros.
   - unfold append_new_ctr_to_state in H4.
     subst s2. simpl in *.
-    destruct H6 as  [H6 | H6]; try contradiction.
-    inversion H6.
+    destruct H5 as  [H5 | H5]; try contradiction.
+    inversion H5.
   - case_eq (ctr_eq_dec ctr ctr0); intros; try contradiction.
     subst ctr0. trivial.
   - case_eq (ctr_eq_dec ctr ctr0); intros; try contradiction.
