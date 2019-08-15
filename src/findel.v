@@ -145,7 +145,7 @@ If all subcontracts result in chaging the balance of the parties, then
 Fixpoint execute
          (P:Primitive) (scale:nat) (I O : Address)
          (balance : Balance) (time : Time) (gtw : list Gateway)
-         (ctr_id : Id) (dsc_id : Id)  (nextId : nat)
+         (ctr_id dsc_id : Id)  (nextId : nat)
          (ledger : list Transaction) : option Result :=
   match P with
   | Zero => Some (result balance [] nextId ledger)
