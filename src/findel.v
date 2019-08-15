@@ -142,7 +142,7 @@ The second component of the tuple is not empty in two situations: either Or is t
 If all subcontracts result in chaging the balance of the parties, then
 
 *) 
-Fixpoint execute_primitive
+Fixpoint execute
          (P:Primitive) (scale:nat) (I O : Address)
          (balance : Balance) (time : Time) (gtw : list Gateway)
          (ctr_id : Id) (dsc_id : Id)  (nextId : nat)
@@ -160,20 +160,20 @@ Fixpoint execute_primitive
          )
   (*    else None *)
   | Scale k c =>
-    (execute_primitive c (scale * k) I O balance time gtw ctr_id dsc_id nextId ledger)
+    (execute c (scale * k) I O balance time gtw ctr_id dsc_id nextId ledger)
   | ScaleObs addr c =>
     match (query gtw addr time) with
     | None => None
     | Some k =>
-      (execute_primitive c (scale * k) I O balance time gtw ctr_id dsc_id nextId ledger)
+      (execute c (scale * k) I O balance time gtw ctr_id dsc_id nextId ledger)
     end
   | Give c =>
-    (execute_primitive c scale O I balance time gtw ctr_id dsc_id nextId ledger)
+    (execute c scale O I balance time gtw ctr_id dsc_id nextId ledger)
   | And c1 c2 =>
-    match (execute_primitive c1 scale I O balance time gtw ctr_id dsc_id nextId ledger) with
+    match (execute c1 scale I O balance time gtw ctr_id dsc_id nextId ledger) with
     | None => None
     | Some (result bal1 Is1 nextId1 ledger') =>
-      match (execute_primitive c2 scale I O bal1 time gtw ctr_id dsc_id nextId1 ledger') with
+      match (execute c2 scale I O bal1 time gtw ctr_id dsc_id nextId1 ledger') with
       | None => None
       | Some (result bal2 Is2 nextId2 ledger'') =>
         Some (result bal2 (Is1 ++ Is2) nextId2 ledger'')
@@ -184,15 +184,15 @@ Fixpoint execute_primitive
     | None => None
     | Some v =>
       if beq_nat v 0
-      then (execute_primitive c2 scale I O balance time gtw ctr_id dsc_id nextId ledger)
-      else (execute_primitive c1 scale I O balance time gtw ctr_id dsc_id nextId ledger)
+      then (execute c2 scale I O balance time gtw ctr_id dsc_id nextId ledger)
+      else (execute c1 scale I O balance time gtw ctr_id dsc_id nextId ledger)
     end
   | Timebound t0 t1 p =>
     if (t1 <? time)
     then None
     else
       if (t0 <? time)
-      then (execute_primitive p scale I O balance time gtw ctr_id dsc_id nextId ledger)
+      then (execute p scale I O balance time gtw ctr_id dsc_id nextId ledger)
       else Some (result balance
                         [(finctr (S nextId) dsc_id (Timebound t0 t1 p) I O O scale)] (S (S nextId)) ledger)
   | Or c1 c2 =>
@@ -312,7 +312,7 @@ Definition next_id_is_fresh (state : State) :=
 
 Definition exec_ctr_in_state_with_owner
            (ctr : FinContract) (state : State) (owner : Address) :=
-  execute_primitive (ctr_primitive ctr)
+  execute (ctr_primitive ctr)
                     (ctr_scale ctr)
                     (ctr_issuer ctr)
                     owner
@@ -327,7 +327,7 @@ Definition exec_ctr_in_state_with_owner
 
 Definition exec_prim_ctr_in_state_with_owner
            (p : Primitive) (ctr : FinContract) (state : State) (owner : Address) :=
-  execute_primitive p
+  execute p
                     (ctr_scale ctr)
                     (ctr_issuer ctr)
                     owner

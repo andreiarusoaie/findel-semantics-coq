@@ -39,7 +39,7 @@ Notation "% C ∈ L | A --> B | P %" := (In C L /\
                                         (at level 80).
 
 
-Lemma execute_primitive_det:
+Lemma execute_det:
   forall s1 s2 ctr ctr',
     step s1 s2 ->
     consistent_ctr_ids s1 ->
@@ -89,7 +89,7 @@ Lemma primitive_execution_modifies_ledger:
   forall primitive scale issuer owner balance
          time gateway ctr_id dsc_id next ledger
          balance' ctrs' next' ledger',
-    execute_primitive primitive scale issuer owner balance
+    execute primitive scale issuer owner balance
                       time gateway ctr_id dsc_id next ledger
     =
     Some (result balance' ctrs' next' ledger') ->
@@ -104,10 +104,10 @@ Proof.
     + eapply IHprimitive. exact H1.
     + inversion H1.
   - eapply IHprimitive in H1; trivial.
-  - case_eq (execute_primitive primitive1 scale issuer owner balance
+  - case_eq (execute primitive1 scale issuer owner balance
            time gateway0 ctr_id0 dsc_id0 next ledger); intros; rewrite H in H1.
     destruct r.
-    case_eq ( execute_primitive primitive2 scale issuer owner
+    case_eq ( execute primitive2 scale issuer owner
            res_balance0 time gateway0 ctr_id0 dsc_id0 res_next0
            res_ledger0); intros; rewrite H0 in H1.
     destruct r.
@@ -166,7 +166,7 @@ Lemma primitive_without_or_timebound_generates_nil:
   forall primitive scale issuer owner balance
          time gateway ctr_id dsc_id next ledger
          balance' ctrs' next' ledger',
-    execute_primitive primitive scale issuer owner balance
+    execute primitive scale issuer owner balance
                       time gateway ctr_id dsc_id next ledger
     =
     Some (result balance' ctrs' next' ledger') ->
@@ -185,9 +185,9 @@ Proof.
   - eapply IHprimitive. exact H3.
     unfold not in *. intros. apply H0. simpl. trivial.
     unfold not in *. intros. apply H1. simpl. trivial.
-  - case_eq (execute_primitive primitive1 scale issuer owner balance time gateway0 ctr_id0 dsc_id0 next ledger); intros; rewrite H in H3; try inversion H3.
+  - case_eq (execute primitive1 scale issuer owner balance time gateway0 ctr_id0 dsc_id0 next ledger); intros; rewrite H in H3; try inversion H3.
     destruct r.
-    case_eq (execute_primitive primitive2 scale issuer owner res_balance0 time gateway0 ctr_id0
+    case_eq (execute primitive2 scale issuer owner res_balance0 time gateway0 ctr_id0
                                dsc_id0 res_next0 res_ledger0); intros; rewrite H2 in H3; try inversion H3.
     destruct r.
     inversion H6.
@@ -217,7 +217,7 @@ Lemma primitive_execution_generates_fresh_id:
   forall primitive scale issuer owner balance
          time gateway ctr_id dsc_id next ledger
          balance' ctrs' next' ledger',
-    execute_primitive primitive scale issuer owner balance
+    execute primitive scale issuer owner balance
                       time gateway ctr_id dsc_id next ledger
     =
     Some (result balance' ctrs' next' ledger') ->
@@ -231,10 +231,10 @@ Proof.
     eapply IHprimitive. exact H.
     inversion H.
   - eapply IHprimitive. exact H.
-  - case_eq (execute_primitive primitive1 scale issuer owner balance time
+  - case_eq (execute primitive1 scale issuer owner balance time
           gateway0 ctr_id0 dsc_id0 next ledger); intros; rewrite H0 in H.
     destruct r.
-    case_eq (execute_primitive primitive2 scale issuer owner res_balance0
+    case_eq (execute primitive2 scale issuer owner res_balance0
           time gateway0 ctr_id0 dsc_id0 res_next0 res_ledger0); intros; rewrite H1 in H.
     destruct r.
     + inversion H; subst.
@@ -313,7 +313,7 @@ Lemma join_same_contract:
     ctr = ctr'.
 Proof.
   intros.
-  eapply execute_primitive_det; eauto.
+  eapply execute_det; eauto.
 Qed.
 
 Lemma same_owner_joins_same_contract:
@@ -391,7 +391,7 @@ Lemma primitive_execution_generates_fresh_contracts:
   forall primitive scale issuer owner balance
          time gateway cttr_id dsc_id next ledger
          balance' ctrs' next' ledger',
-    execute_primitive primitive scale issuer owner balance
+    execute primitive scale issuer owner balance
                       time gateway cttr_id dsc_id next ledger
     =
     Some (result balance' ctrs' next' ledger') ->
@@ -403,11 +403,11 @@ Proof.
     + eapply IHprimitive; eauto.
     + inversion H2.
   - eapply IHprimitive; eauto.
-  - case_eq (execute_primitive primitive1 scale issuer owner balance
+  - case_eq (execute primitive1 scale issuer owner balance
                                time gateway0 cttr_id dsc_id0
                                next ledger); intros; rewrite H in H2.
     + destruct r.
-      case_eq (execute_primitive primitive2 scale issuer owner res_balance0
+      case_eq (execute primitive2 scale issuer owner res_balance0
                                  time gateway0 cttr_id
                                  dsc_id0 res_next0 res_ledger0);
         intros; rewrite H1 in H2.
@@ -536,7 +536,7 @@ Ltac and_intros :=
 
 Ltac same_ctr c1 c2 s:=
   let H := fresh "H" in
-  assert (H : c1 = c2); try eapply execute_primitive_det; eauto;
+  assert (H : c1 = c2); try eapply execute_det; eauto;
   (subst s; simpl; auto).
 
 Ltac case_analysis H :=
