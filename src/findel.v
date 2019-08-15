@@ -129,19 +129,7 @@ Record Result :=
     }.
 
 
-(** * Executing primitives recursively
-
-The execute\_primitive function executes a primitive recursively.
-The function outputs a tuple consisting of:
- 1. The balance of the participants after the execution;
- 2. The list of contracts (when Or or Timebound are executed) that need to be issued when executing the current primitive;
- 3. The next available global identifier;
- 4. The updated ledger with transactions operated when executing the current primitive.
-
-The second component of the tuple is not empty in two situations: either Or is the current primitive to be executed; or Timebound t0 t1 is the current primitive and the current time is less than t0.
-If all subcontracts result in chaging the balance of the parties, then
-
-*) 
+(* Execute primitives recursively *)
 Fixpoint execute
          (P:Primitive) (scale:nat) (I O : Address)
          (balance : Balance) (time : Time) (gtw : list Gateway)
@@ -220,11 +208,6 @@ Inductive Event :=
 | Executed : Id -> Event
 | Deleted : Id -> Event.
 
-(** * The State
-
-The State includes the list of issued contracts, the list of contract descriptions, a balance that stores the amount of tokens for each account owner, and the current time. Additionally we use a natural number as identifier for contract instances.
-
-*) 
 
 Record State :=
   state {
@@ -283,12 +266,6 @@ Fixpoint greater_than_all (id : nat) (ctrs : list FinContract) :=
 Definition is_or  (primitive: Primitive):=
   match primitive with
   | Or _ _  => True
-  | _ => False
-  end.
-
-Definition is_timebound  (primitive: Primitive):=
-  match primitive with
-  | Timebound _ _ _ => True
   | _ => False
   end.
 
