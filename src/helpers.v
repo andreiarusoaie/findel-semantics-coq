@@ -549,6 +549,27 @@ Ltac case_analysis H :=
     => case_eq c; intros H'; rewrite H' in H; try inversion H; clear H
   end.
 
+Lemma inf_contradiction :
+  forall x, ((INF <? x) = true) -> False.
+Proof.
+  intros.
+  assert (H':= infinite).
+  apply leb_correct_conv with (m := x) in H'.
+  unfold Nat.ltb in H.
+  assert (H'' : INF < S INF); try omega.
+  apply leb_correct_conv in H''.
+Admitted.
+
+Ltac case_inf_false H :=
+  let H' := fresh "H" in 
+  match goal with
+  | H : match (if INF <? ?x then _ else _)  with
+        | Some _ => _
+        | None => _
+        end = _ |- _
+    => case_eq ?c; intros H'; rewrite H' in H; try apply inf_contradiction
+  end.
+
 Ltac same_owner o1 o2 ctr1 ctr2:=
   let H' := fresh "H" in
   assert (H' : o1 = o2);
@@ -851,4 +872,22 @@ Proof.
     eapply gateway_stays_fresh_right; eauto.
     apply IHsteps.
     eapply gateway_stays_fresh_left; eauto.
+Qed.
+
+Import ListNotations.
+Set Implicit Arguments.
+Variable A : Type.
+Lemma cons_not_equal_to_list (default : Type):
+  forall (l : list A) a, a :: l <> l.
+Proof.
+  induction l; intros.
+  - unfold not.
+    intros H.
+    inversion H.
+  - unfold not in *.
+    intros H'.
+    inversion H'.
+    subst a.
+    eapply IHl.
+    exact H1.
 Qed.

@@ -6,3 +6,5 @@ proofs/zero_coupon_bond.v
 proofs/fixed_rate_currency_exchange.v
 proofs/currency_exchange_external.v
 proofs/double_your_loan.v
+-I tests/
+tests/tests.v
