@@ -540,7 +540,7 @@ Ltac same_ctr c1 c2 s:=
   (subst s; simpl; auto).
 
 Ltac case_analysis H :=
-  let H' := fresh "H" in 
+  let H' := fresh "H" in
   match goal with
   | H : match (if ?c then _ else _)  with
         | Some _ => _
@@ -553,22 +553,14 @@ Lemma inf_contradiction :
   forall x, ((INF <? x) = true) -> False.
 Proof.
   intros.
-  assert (H':= infinite).
-  apply leb_correct_conv with (m := x) in H'.
   unfold Nat.ltb in H.
-  assert (H'' : INF < S INF); try omega.
-  apply leb_correct_conv in H''.
-Admitted.
+  rewrite leb_correct_conv in H.
+  - inversion H.
+  - apply Nat.lt_trans with (m := INF).
+    + apply infinite.
+    + omega.
+Qed.
 
-Ltac case_inf_false H :=
-  let H' := fresh "H" in 
-  match goal with
-  | H : match (if INF <? ?x then _ else _)  with
-        | Some _ => _
-        | None => _
-        end = _ |- _
-    => case_eq ?c; intros H'; rewrite H' in H; try apply inf_contradiction
-  end.
 
 Ltac same_owner o1 o2 ctr1 ctr2:=
   let H' := fresh "H" in
@@ -875,9 +867,7 @@ Proof.
 Qed.
 
 Import ListNotations.
-Set Implicit Arguments.
-Variable A : Type.
-Lemma cons_not_equal_to_list (default : Type):
+Lemma rest_not_equal_to_list (A : Type):
   forall (l : list A) a, a :: l <> l.
 Proof.
   induction l; intros.
