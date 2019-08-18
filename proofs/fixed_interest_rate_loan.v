@@ -36,17 +36,49 @@ Proof.
   simpl in H.
   case_analysis H.
   case_analysis H2.
-  - 
   - case_analysis H3.
-    + admit.
-     
     case_analysis H4; simpl.
-  - 
-Qed.
+    + apply rest_not_equal_to_list.
+    + admit. (* This proof path shows that the ledger might not get changed. *)
+  - case_analysis H3.
+    case_analysis H4; simpl.
+    + apply rest_not_equal_to_list.
+    + admit. (* This proof path shows that the ledger might not get changed. *)
+Admitted.
 
+Check firl_description.
+Check finctr.
+Print FinContract.
+Print State.
+Check Executed.
+
+Definition is_executed (c_id : Id) (s : State) := In (Executed c_id) (m_events s).
+
+Definition is_issued (c_id dsc_id : Id)(P : Primitive) (I O: Address) (sc : nat) (s : State):=
+  In (finctr c_id dsc_id P I O O sc) (m_contracts s).
+ 
+Print State.
+Print Transaction.
+
+Lemma firl_pays_the_owner_if_time_is_t_plus_2 :
+  forall s1 s2 t I O sc c_id dsc_id,
+    steps s1 s2 ->
+    m_global_time s1 = t ->
+    m_global_time s2 >= t + 2 ->
+    is_issued c_id dsc_id (firl_description t) I O sc s1 ->
+    ~ is_executed c_id s1 ->
+    is_executed c_id s2 ->
+    exists tr tr_id,
+      In tr (m_ledger s2) /\
+      tr = (transaction tr_id c_id I O 2 EUR (t+2)).
+Proof.
+  intros.
+  induction H; try subst; try contradiction.
+  
 
 
 Print exec_ctr_in_state_with_owner.
+
 
 Definition double_your_loan_ctr
            (alice bob : Address)
