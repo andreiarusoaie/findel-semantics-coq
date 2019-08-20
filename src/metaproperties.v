@@ -1,5 +1,6 @@
 Load findel.
 
+(* Handy tactics *)
 Ltac case_match H :=
   let H' := fresh "H" in
   match goal with
@@ -10,12 +11,50 @@ Ltac case_match H :=
     => case_eq c; intros * H'; rewrite H' in H; inversion H; clear H
   end.
 
+
 Ltac case_if H :=
   let H' := fresh "H" in
   match goal with
   | H : (if ?c then _ else _) = _ |- _
     => case_eq c; intros * H'; rewrite H' in H; inversion H; clear H
   end.
+
+
+Ltac case_analysis H :=
+  let H' := fresh "H" in
+  match goal with
+  | H : match (if ?c then _ else _)  with
+        | Some _ => _
+        | None => _
+        end = _ |- _
+    => case_eq c; intros H'; rewrite H' in H; try inversion H; clear H
+  end.
+
+
+(* Misc *)
+
+Definition consistent_state (s : State) :=
+  (forall ctr ctr', In ctr (m_contracts s) -> In ctr' (m_contracts s) -> (ctr_id ctr = ctr_id ctr') -> ctr = ctr') /\
+  forall ctr, In ctr (m_contracts s) -> (~ In (Executed (ctr_id ctr)) (m_events s) /\ ~ In (Deleted (ctr_id ctr)) (m_events s)).
+
+Lemma rest_not_equal_to_list (A : Type):
+  forall (l : list A) a, a :: l <> l.
+Proof.
+  induction l; intros.
+  - unfold not.
+    intros H.
+    inversion H.
+  - unfold not in *.
+    intros H'.
+    inversion H'.
+    subst a.
+    eapply IHl.
+    exact H1.
+Qed.
+(* End misc *)
+
+
+(* Metaproperties about the ledger *)
 
 (* The execute function only appends transactions to the existing legder *)
 Lemma ledger_consistent_execute:
@@ -169,4 +208,175 @@ Proof.
   rewrite in_app_iff.
   right.
   trivial.
+Qed.
+
+
+(* Metaproperties about events *)
+Lemma step_preserves_consistent_state:
+  forall s s',
+    step s s' ->
+    consistent_state s ->
+    consistent_state s'.
+Proof.
+Admitted.
+
+Lemma steps_preserves_consistent_state:
+  forall s s',
+    steps s s' ->
+    consistent_state s ->
+    consistent_state s'.
+Proof.
+Admitted.
+
+
+Lemma events_consistent_step:
+  forall s s' e,
+    step s s' ->
+    In e (m_events s) ->
+    In e (m_events s').
+Proof.
+  intros.
+  induction H; subst s'; simpl; trivial; try right; try trivial.
+Qed.
+
+(* This lemma avoids the use of the classical logic *)
+Lemma classic_step:
+  forall s s' c,
+    step s s' ->
+    consistent_state s ->
+    In c (m_contracts s) ->
+    (In (Executed (ctr_id c)) (m_events s') \/ ~ In (Executed (ctr_id c)) (m_events s')).
+Proof.
+  intros.
+  induction H; subst s'.
+  - unfold append_new_ctr_to_state. simpl.
+    right. unfold not. intros.
+    destruct H6 as [H6 | H6]; try inversion H6.
+    unfold consistent_state in H0.
+    destruct H0 as [H' H''].
+    apply H'' in H1.
+    destruct H1 as [H1 H1'].
+    contradiction.
+  - case_eq (ctr_eq_dec c ctr); intros.
+    + subst. simpl. left. left. trivial.
+    + contradiction.
+  - case_eq (ctr_eq_dec c ctr); intros.
+    + subst. simpl. left. left. trivial.
+    + contradiction.
+  - case_eq (ctr_eq_dec c ctr); intros.
+    + subst. simpl. left. left. trivial.
+    + contradiction.
+  - simpl. right. unfold not. intros.
+    destruct H6 as [H6 | H6]; try inversion H6.
+    unfold consistent_state in H0.
+    destruct H0 as [H' H''].
+    apply H'' in H1.
+    destruct H1 as [H1 H1'].
+    contradiction.
+  - simpl. right.
+    unfold consistent_state in H0.
+    destruct H0 as [H' H''].
+    apply H'' in H1.
+    destruct H1 as [H1 H1'].
+    trivial.
+Qed.
+
+(* Metaproperties about state consistency *)
+
+
+
+(* Metaproperties about contract execution *)
+
+
+Lemma step_effect_over_contract:
+  forall ctr s s',
+    step s s' ->
+    In ctr (m_contracts s) ->
+    (In ctr (m_contracts s') \/
+     In (Executed (ctr_id ctr)) (m_events s') \/
+     In (Deleted (ctr_id ctr)) (m_events s')).
+Proof.
+  intros *.
+  intros H H'.
+  induction H.
+  - left. unfold append_new_ctr_to_state in H4.
+    subst s'. simpl. right. trivial.
+  - subst s'. simpl.
+    case_eq (ctr_eq_dec ctr0 ctr); intros.
+    + subst ctr0. right. left. left. trivial.
+    + contradiction.
+  - case_eq (ctr_eq_dec ctr0 ctr); intros.
+    + subst. right. left. simpl. left. trivial.
+    + contradiction.
+  - case_eq (ctr_eq_dec ctr0 ctr); intros.
+    + subst. right. left. simpl. left. trivial.
+    + contradiction.
+  - case_eq (ctr_eq_dec ctr0 ctr); intros.
+    + subst. right. right. simpl. left. trivial.
+    + contradiction.
+  - subst s'. simpl. left. trivial.
+Qed.
+
+Lemma steps_effect_over_contract:
+  forall ctr s s',
+    steps s s' ->
+    In ctr (m_contracts s) ->
+    (In ctr (m_contracts s') \/
+     In (Executed (ctr_id ctr)) (m_events s') \/
+     In (Deleted (ctr_id ctr)) (m_events s')).
+Proof.
+  intros.
+  induction H.
+  - subst s2. left. trivial.
+  - destruct IHsteps as [N | [E | D]].
+    + eapply step_effect_over_contract; eauto.
+    + eapply events_consistent_step in E; eauto.
+    + eapply events_consistent_step in D; eauto.
+Qed.
+
+
+(* Lemma classic_steps: *)
+(*   forall s s' c, *)
+(*     steps s s' -> *)
+(*     consistent_state s -> *)
+(*     In c (m_contracts s) -> *)
+(*     (In (Executed (ctr_id c)) (m_events s') \/ ~ In (Executed (ctr_id c)) (m_events s')). *)
+(* Proof. *)
+(*   intros. *)
+(*   induction H. *)
+(*   - subst. *)
+(*     unfold consistent_state in H0. *)
+(*     destruct H0 as [H' H'']. *)
+(*     apply H'' in H1. *)
+(*     destruct H1 as [H1 H1']. *)
+(*     right. trivial. *)
+(*   - destruct IHsteps as [H' | H']. *)
+(*     + apply events_consistent_step with (s' := s2) in H'; auto. *)
+(*     + apply classic_step with (c := c) in H2. *)
+(*       * trivial. *)
+(*       * eapply steps_preserves_consistent_state; eauto. *)
+(*       * apply steps_effect_over_contract with (ctr := c) in H; auto. *)
+(*         destruct H as [H | [H | H]]; trivial. *)
+(*         ** contradiction. *)
+(*         ** unfold consistent_state in H0. *)
+(*            destruct H0 as [H0 H0']. *)
+(*            admit. *)
+(* Admitted. *)
+
+(* Qed. *)
+
+
+(* Metaproperties about events *)
+Lemma only_tick_modifies_time:
+  forall s s',
+    step s s' ->
+    (exists e, m_events s' = e :: (m_events s)) ->
+    m_global_time s = m_global_time s'.
+Proof.
+  intros s s' H [e He].
+  induction H; subst s'; trivial.
+  simpl in *.
+  symmetry in He.
+  contradict He.
+  apply rest_not_equal_to_list.
 Qed.
