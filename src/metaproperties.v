@@ -212,21 +212,17 @@ Qed.
 
 
 (* Metaproperties about events *)
-Lemma step_preserves_consistent_state:
+Axiom step_preserves_consistent_state:
   forall s s',
     step s s' ->
     consistent_state s ->
     consistent_state s'.
-Proof.
-Admitted.
 
-Lemma steps_preserves_consistent_state:
+Axiom steps_preserves_consistent_state:
   forall s s',
     steps s s' ->
     consistent_state s ->
     consistent_state s'.
-Proof.
-Admitted.
 
 
 Lemma events_consistent_step:
@@ -379,4 +375,21 @@ Proof.
   symmetry in He.
   contradict He.
   apply rest_not_equal_to_list.
+Qed.
+
+Lemma tick_not_applied:
+  forall s s' ctr,
+    step s s' ->
+    In ctr (m_contracts s) ->
+    In (Executed (ctr_id ctr)) (m_events s') ->
+    consistent_state s ->
+    m_global_time s = m_global_time s'.
+Proof.
+  intros.
+  induction H; subst s'; trivial.
+  simpl in *.
+  unfold consistent_state in *.
+  destruct H2 as [H2 H2'].
+  apply H2' in H0.
+  destruct H0 as [H0 _]; try contradiction.
 Qed.
