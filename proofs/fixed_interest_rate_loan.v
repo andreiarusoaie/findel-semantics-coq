@@ -134,5 +134,19 @@ Proof.
       apply S1 in H.
       destruct H as [H _]; try contradiction.
       unfold is_executed. subst c. simpl in *. trivial.
-    + 
+    + subst c. simpl in H.
+      apply IHsteps in H.
+      destruct H as [tr [td [H H']]].
+      exists tr, td.
+      split; trivial.
+      eapply step_does_not_remove_transactions; eauto.
+      admit.
+    + apply steps_preserves_consistent_state with (s' := s2) in H2.
+      ++ eapply events_consistent_step in H; eauto.
+         subst c. simpl in H.
+         unfold consistent_state in H2.
+         destruct H2 as [_ [_ H2]].
+         assert (~ (In (Executed c_id) (m_events s2) /\ In (Deleted c_id) (m_events s2))); auto.
+         contradict H8. split; trivial.
+      ++ eapply tran; eauto.
 Admitted.

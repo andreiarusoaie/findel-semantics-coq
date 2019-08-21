@@ -35,7 +35,8 @@ Ltac case_analysis H :=
 
 Definition consistent_state (s : State) :=
   (forall ctr ctr', In ctr (m_contracts s) -> In ctr' (m_contracts s) -> (ctr_id ctr = ctr_id ctr') -> ctr = ctr') /\
-  forall ctr, In ctr (m_contracts s) -> (~ In (Executed (ctr_id ctr)) (m_events s) /\ ~ In (Deleted (ctr_id ctr)) (m_events s)).
+  (forall ctr, In ctr (m_contracts s) -> (~ In (Executed (ctr_id ctr)) (m_events s) /\ ~ In (Deleted (ctr_id ctr)) (m_events s))) /\
+  (forall e, ~ (In (Executed e) (m_events s) /\ In (Deleted e) (m_events s))).
 
 Lemma rest_not_equal_to_list (A : Type):
   forall (l : list A) a, a :: l <> l.
