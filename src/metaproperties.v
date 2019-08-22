@@ -394,3 +394,78 @@ Proof.
   apply H2' in H0.
   destruct H0 as [H0 _]; try contradiction.
 Qed.
+
+
+Lemma step_executes_only_one_contract:
+  forall ctr ctr' s s',
+    step s s' ->
+    consistent_state s ->
+    In ctr (m_contracts s) ->
+    In ctr' (m_contracts s) ->
+    In (Executed (ctr_id ctr)) (m_events s') ->
+    In (Executed (ctr_id ctr')) (m_events s') ->
+    ctr = ctr'.
+Proof.
+ intros *. intros H. induction H; intros; subst s'; unfold consistent_state in *.
+ - destruct H5 as [H' [T P]].
+   simpl in H8, H9.
+   destruct H8 as [H8 | H8]; try inversion H8.
+   destruct H9 as [H9 | H9]; try inversion H9.
+   apply T in H8; auto; try contradiction.
+ - simpl in H10, H11.
+   destruct H10 as [H10 | H10]; try inversion H10.
+   destruct H7 as [H' [T P]].
+   destruct H11 as [H11 | H11]; try inversion H11.
+   + rewrite H7 in H12. apply H'; auto.
+   + apply T in H9. destruct H9 as [H9 _]; contradiction.
+   + destruct H7 as [H' [T P]].
+     destruct H11 as [H11 | H11]; try inversion H11.
+     * apply T in H8.
+       destruct H8 as [H8 _]; contradiction.
+     * apply T in H8.
+       destruct H8 as [H8 _]; contradiction.
+ - simpl in H10, H11.
+   destruct H10 as [H10 | H10]; try inversion H10.
+   destruct H7 as [H' [T P]].
+   destruct H11 as [H11 | H11]; try inversion H11.
+   + rewrite H7 in H12. apply H'; auto.
+   + apply T in H9. destruct H9 as [H9 _]; contradiction.
+   + destruct H7 as [H' [T P]].
+     destruct H11 as [H11 | H11]; try inversion H11.
+     * apply T in H8.
+       destruct H8 as [H8 _]; contradiction.
+     * apply T in H8.
+       destruct H8 as [H8 _]; contradiction.
+ - simpl in H10, H11.
+   destruct H10 as [H10 | H10]; try inversion H10.
+   destruct H7 as [H' [T P]].
+   destruct H11 as [H11 | H11]; try inversion H11.
+   + rewrite H7 in H12. apply H'; auto.
+   + apply T in H9. destruct H9 as [H9 _]; contradiction.
+   + destruct H7 as [H' [T P]].
+     destruct H11 as [H11 | H11]; try inversion H11.
+     * apply T in H8.
+       destruct H8 as [H8 _]; contradiction.
+     * apply T in H8.
+       destruct H8 as [H8 _]; contradiction.
+ - simpl in H8, H9.
+   destruct H8 as [H8 | H8]; try inversion H8.
+   destruct H9 as [H9 | H9]; try inversion H9.
+   destruct H5 as [H' [T P]].
+   apply T in H8; auto; try contradiction.
+ - simpl in H3, H4.
+   destruct H0 as [H' [T P]].
+   apply T in H3; auto; try contradiction.
+Qed.
+
+
+Lemma step_does_not_remove_events:
+  forall s s' e,
+    step s s' ->
+    In e (m_events s) ->
+    In e (m_events s').
+Proof.
+  intros * H.
+  revert e.
+  induction H; intros; subst s'; simpl; try right; trivial.
+Qed.
