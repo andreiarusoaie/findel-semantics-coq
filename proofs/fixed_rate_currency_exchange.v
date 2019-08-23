@@ -8,8 +8,6 @@ Definition frce_desc :=
   ).
 
 
-Print Transaction.
-Print execute.
 Lemma frce_execute_I_to_O :
   forall sc I O bal time gtw ctr_id dsc_id next_id ledger result,
     execute frce_desc sc I O bal time gtw ctr_id dsc_id next_id ledger =
