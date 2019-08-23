@@ -187,7 +187,7 @@ Proof.
     destruct H as [H|[H|H]]; trivial.
     + eexists.
       eapply frce_step_I_to_O; eauto.
-      destruct H' as [H' [T P]].
+      destruct H' as [_ [_ [H' [T P]]]].
       apply T in H.
       destruct H as [H _].
       subst ctr.
@@ -202,7 +202,7 @@ Proof.
       eapply step_does_not_remove_transactions; eauto.
     + eapply step_does_not_remove_events in H; eauto.
       eapply step_preserves_consistent_state in H'; eauto.
-      destruct H' as [H' [T P]].
+      destruct H' as [_ [_ [H' [T P]]]].
       subst ctr. simpl in *.
       contradiction P with (e := ctr_id0).
       split; trivial.
@@ -235,7 +235,7 @@ Proof.
     destruct H as [H|[H|H]]; trivial.
     + eexists.
       eapply frce_step_O_to_I; eauto.
-      destruct H' as [H' [T P]].
+      destruct H' as [_ [_ [H' [T P]]]].
       apply T in H.
       destruct H as [H _].
       subst ctr.
@@ -250,7 +250,7 @@ Proof.
       eapply step_does_not_remove_transactions; eauto.
     + eapply step_does_not_remove_events in H; eauto.
       eapply step_preserves_consistent_state in H'; eauto.
-      destruct H' as [H' [T P]].
+      destruct H' as [_ [_ [H' [T P]]]].
       subst ctr. simpl in *.
       contradiction P with (e := ctr_id0).
       split; trivial.
