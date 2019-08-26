@@ -110,7 +110,7 @@ Proof.
 Qed.
 
 (* execute does not remove transactions from the ledger *)
-Lemma execute_does_not_remove_transactions:
+Theorem execute_does_not_remove_transactions:
   forall tr P sc I O balance time gtw
          ctr_id dsc_id next_id ledger result,
     execute P sc I O balance time gtw
@@ -161,7 +161,7 @@ Qed.
 
 
 (* step does not remove transactions from the ledger *)
-Lemma step_does_not_remove_transactions:
+Theorem step_does_not_remove_transactions:
   forall tr s1 s2,
     step s1 s2 ->
     In tr (m_ledger s1)->
@@ -790,6 +790,48 @@ Proof.
 Qed.
 
 
+Theorem step_executes_if_executed_triggered:
+  forall ctr s s',
+    step s s' ->
+    consistent_state s ->
+    In ctr (m_contracts s) ->
+    In (Executed (ctr_id ctr)) (m_events s') ->
+    exists result,
+      execute (ctr_primitive ctr)
+              (ctr_scale ctr)
+              (ctr_issuer ctr)
+              (ctr_proposed_owner ctr)
+              (m_balance s)
+              (m_global_time s)
+              (m_gateway s)
+              (ctr_id ctr)
+              (ctr_desc_id ctr)
+              (m_fresh_id s)
+              (m_ledger s) =
+      Some result.
+Proof.
+  intros ctr s s' H.
+  revert ctr.
+  induction H; intros; subst s'.
+  - simpl in *.
+    destruct H7 as [H7 | H7].
+    inversion H7.
+    destruct H5 as [_ [_ [_ [H5 _]]]].
+    apply H5 in H6.
+    destruct H6 as [H6 _].
+    contradiction.
+  - simpl in H9.
+    case_eq (ctr_eq_dec ctr ctr0); intros; try contradiction.
+    subst.
+    unfold exec_ctr_in_state_with_owner in H5.
+    eexists.
+    unfold can_join in H0.
+    destruct H0 as [H0 | H0].
+    + subst. exact H5.
+    + 
+
+
+
 Theorem step_does_not_remove_events:
   forall s s' e,
     step s s' ->
@@ -799,4 +841,45 @@ Proof.
   intros * H.
   revert e.
   induction H; intros; subst s'; simpl; try right; trivial.
+Qed.
+
+Theorem time_passes_one_step_at_a_time:
+forall s s' n,
+  step s s' ->
+  m_global_time s' >= S n ->
+  m_global_time s >= n.
+Proof.
+  intros. induction H; subst s'; simpl in *; try omega.
+Qed.
+
+Theorem time_passes_one_step_at_a_time':
+forall s s' n,
+  step s s' ->
+  m_global_time s' = S n ->
+  m_global_time s = n \/ m_global_time s = S n.
+Proof.
+  intros. induction H; subst s'; simpl in *; try omega.
+Qed.
+
+
+Theorem no_tick_if_event_generated:
+forall s s' t,
+  step s s' ->
+  (exists e, In e (m_events s') /\ ~ In e (m_events s)) ->
+  m_global_time s' >= t ->
+  m_global_time s >= t.
+Proof.
+  intros. destruct H0 as [e [I NI]].
+  induction H; subst s'; simpl in *; auto. contradiction.
+Qed.
+
+Theorem no_tick_if_event_generated':
+forall s s' t,
+  step s s' ->
+  (exists e, In e (m_events s') /\ ~ In e (m_events s)) ->
+  m_global_time s' = t ->
+  m_global_time s = t.
+Proof.
+  intros. destruct H0 as [e [I NI]].
+  induction H; subst s'; simpl in *; auto. contradiction.
 Qed.
