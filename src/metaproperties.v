@@ -40,6 +40,21 @@ Definition consistent_state (s : State) :=
   (forall ctr, In ctr (m_contracts s) -> (~ In (Executed (ctr_id ctr)) (m_events s) /\ ~ In (Deleted (ctr_id ctr)) (m_events s))) /\
   (forall e, ~ (In (Executed e) (m_events s) /\ In (Deleted e) (m_events s))).
 
+
+Lemma consistent_impl_exec:
+  forall s ctr,
+    consistent_state s ->
+    In ctr (m_contracts s) ->
+    ~ In (Executed (ctr_id ctr)) (m_events s).
+Proof.
+  intros.
+  destruct H as [_ [_ [_ [H _]]]].
+  apply H in H0.
+  destruct H0 as [H0 _].
+  trivial.
+Qed.
+
+
 Lemma rest_not_equal_to_list (A : Type):
   forall (l : list A) a, a :: l <> l.
 Proof.

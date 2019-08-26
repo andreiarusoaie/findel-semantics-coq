@@ -9,19 +9,6 @@ Definition zcb_desc
      (At (NOW + PERIOD) (Scale 11 (One USD)))
   ).
 
-Lemma consistent_impl_exec:
-  forall s ctr,
-    consistent_state s ->
-    In ctr (m_contracts s) ->
-    ~ In (Executed (ctr_id ctr)) (m_events s).
-Proof.
-  intros.
-  destruct H as [_ [_ [_ [H _]]]].
-  apply H in H0.
-  destruct H0 as [H0 _].
-  trivial.
-Qed.
-
 
 (* The owner pays the issuer *)
 Lemma zcb_execute_O_to_I :
