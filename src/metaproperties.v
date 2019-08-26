@@ -744,38 +744,6 @@ Proof.
 Qed.
 
 
-(* Lemma classic_steps: *)
-(*   forall s s' c, *)
-(*     steps s s' -> *)
-(*     consistent_state s -> *)
-(*     In c (m_contracts s) -> *)
-(*     (In (Executed (ctr_id c)) (m_events s') \/ ~ In (Executed (ctr_id c)) (m_events s')). *)
-(* Proof. *)
-(*   intros. *)
-(*   induction H. *)
-(*   - subst. *)
-(*     unfold consistent_state in H0. *)
-(*     destruct H0 as [H' H'']. *)
-(*     apply H'' in H1. *)
-(*     destruct H1 as [H1 H1']. *)
-(*     right. trivial. *)
-(*   - destruct IHsteps as [H' | H']. *)
-(*     + apply events_consistent_step with (s' := s2) in H'; auto. *)
-(*     + apply classic_step with (c := c) in H2. *)
-(*       * trivial. *)
-(*       * eapply steps_preserves_consistent_state; eauto. *)
-(*       * apply steps_effect_over_contract with (ctr := c) in H; auto. *)
-(*         destruct H as [H | [H | H]]; trivial. *)
-(*         ** contradiction. *)
-(*         ** unfold consistent_state in H0. *)
-(*            destruct H0 as [H0 H0']. *)
-(*            admit. *)
-(* Admitted. *)
-
-(* Qed. *)
-
-
-(* Metaproperties about events *)
 Lemma only_tick_modifies_time:
   forall s s',
     step s s' ->
