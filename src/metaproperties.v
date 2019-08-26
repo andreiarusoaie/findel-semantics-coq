@@ -54,6 +54,72 @@ Proof.
     eapply IHl.
     exact H1.
 Qed.
+
+Lemma leb_sound_true:
+  forall n m,
+    n <=? m = true -> n <= m.
+Proof.
+  induction n.
+  - induction m; intros; try omega.
+  - intros m.
+    case_eq m; intros; subst m; simpl in H0.
+    + inversion H0.
+    + apply IHn in H0. omega.
+Qed.
+
+
+Lemma leb_sound_false:
+  forall n m,
+    n <=? m = false -> ~ n <= m.
+Proof.
+  induction n.
+  - induction m; intros; simpl in H; inversion H.
+  - intros m.
+    case_eq m; intros; subst m; simpl in H0.
+    + omega.
+    + apply IHn in H0. omega.
+Qed.
+
+Lemma ltb_sound_true:
+  forall n m,
+    n <? m = true -> n < m.
+Proof.
+  unfold Nat.ltb.
+  intros.
+  simpl in H.
+  case_eq m; intros; subst m.
+  - inversion H.
+  - apply leb_sound_true in H. omega.
+Qed.
+
+
+Lemma ltb_sound_false:
+  forall n m,
+    n <? m = false -> ~ n < m.
+Proof.
+  unfold Nat.ltb.
+  intros.
+  simpl in H.
+  case_eq m; intros; subst m.
+  - omega.
+  - apply leb_sound_false in H. omega.
+Qed.
+
+Lemma propleb_sound_false:
+  forall n m,
+    ~ n <= m -> n <=? m = false.
+Proof.
+  induction n.
+  - intros. contradict H. omega.
+  - induction m; intros.
+    + simpl. trivial.
+    + simpl. apply IHn.
+      unfold not. intros.
+      apply H.
+      omega.
+Qed.
+
+
 (* End misc *)
 
 
@@ -790,17 +856,17 @@ Proof.
 Qed.
 
 
-Theorem step_executes_if_executed_triggered:
+Theorem step_implies_execute_result:
   forall ctr s s',
     step s s' ->
     consistent_state s ->
     In ctr (m_contracts s) ->
     In (Executed (ctr_id ctr)) (m_events s') ->
-    exists result,
+    exists owner result,
       execute (ctr_primitive ctr)
               (ctr_scale ctr)
               (ctr_issuer ctr)
-              (ctr_proposed_owner ctr)
+              owner
               (m_balance s)
               (m_global_time s)
               (m_gateway s)
@@ -812,24 +878,37 @@ Theorem step_executes_if_executed_triggered:
 Proof.
   intros ctr s s' H.
   revert ctr.
-  induction H; intros; subst s'.
-  - simpl in *.
-    destruct H7 as [H7 | H7].
+  induction H; intros; subst s'; simpl in *.
+  - destruct H7 as [H7 | H7].
     inversion H7.
     destruct H5 as [_ [_ [_ [H5 _]]]].
     apply H5 in H6.
     destruct H6 as [H6 _].
     contradiction.
-  - simpl in H9.
-    case_eq (ctr_eq_dec ctr ctr0); intros; try contradiction.
+  - case_eq (ctr_eq_dec ctr ctr0); intros; try contradiction.
     subst.
     unfold exec_ctr_in_state_with_owner in H5.
-    eexists.
     unfold can_join in H0.
     destruct H0 as [H0 | H0].
-    + subst. exact H5.
-    + 
-
+    + eexists. eexists. subst. exact H5.
+    + exists owner. eexists; eauto.
+  - case_eq (ctr_eq_dec ctr ctr0); intros; try contradiction.
+    subst. rewrite H2. simpl. eexists; eexists; eauto.
+    Unshelve. apply owner.
+  - case_eq (ctr_eq_dec ctr ctr0); intros; try contradiction.
+    subst. rewrite H2. simpl. eexists. eexists. eauto.
+    Unshelve. apply owner.
+  - case_eq (ctr_eq_dec ctr ctr0); intros; try contradiction.
+    destruct H7 as [H7 | H7]; try inversion H7.
+    destruct H5 as [_ [_ [_[H5 _]]]].
+    apply H5 in H.
+    destruct H as [H _].
+    subst. contradiction.
+  - destruct H0 as [_ [_ [_[H0 _]]]].
+    apply H0 in H1.
+    destruct H1 as [H1 _].
+    subst. contradiction.
+Qed.
 
 
 Theorem step_does_not_remove_events:
@@ -861,6 +940,13 @@ Proof.
   intros. induction H; subst s'; simpl in *; try omega.
 Qed.
 
+Theorem time_inc:
+forall s s',
+  step s s' ->
+  m_global_time s <= m_global_time s'.
+Proof.
+  intros. induction H; subst s'; simpl; try omega.
+Qed.
 
 Theorem no_tick_if_event_generated:
 forall s s' t,
@@ -882,4 +968,48 @@ forall s s' t,
 Proof.
   intros. destruct H0 as [e [I NI]].
   induction H; subst s'; simpl in *; auto. contradiction.
+Qed.
+
+Lemma exists_step_in_steps:
+  forall s1 s2 ctr,
+    steps s1 s2 ->
+    consistent_state s1 ->
+    In ctr (m_contracts s1) ->
+    ~ In (Executed (ctr_id ctr)) (m_events s1) ->
+    In (Executed (ctr_id ctr)) (m_events s2) ->
+    exists s s',
+      steps s1 s /\
+      step s s' /\
+      steps s' s2 /\
+      ~ In (Executed (ctr_id ctr)) (m_events s) /\
+      In ctr (m_contracts s) /\
+      In (Executed (ctr_id ctr)) (m_events s').
+Proof.
+  intros *.
+  intros H.
+  revert ctr.
+  induction H; intros.
+  - subst s2. contradiction.
+  - assert (H' := H).
+    apply steps_effect_over_contract with (ctr := ctr) in H; auto.
+    destruct H as [H | [H | H]].
+    + exists s, s2.
+      repeat split; trivial.
+      apply refl. trivial.
+      apply steps_preserves_consistent_state in H'; trivial.
+      destruct H' as [_ [_ [_ [H' _]]]].
+      apply H' in H.
+      destruct H as [H _].
+      trivial.
+    + apply IHsteps in H; auto.
+      destruct H as [sk [sk' [Ss [S [Ss' [H'' [h1 h2]]]]]]].
+      exists sk, sk'.
+      repeat split; trivial.
+      eapply tran; eauto.
+    + eapply step_does_not_remove_events in H; eauto.
+      eapply steps_preserves_consistent_state in H'; trivial.
+      eapply step_preserves_consistent_state in H'; eauto.
+      destruct H' as [_ [_ [_ [_ H']]]].
+      exfalso.
+      eapply H'; eauto.
 Qed.
