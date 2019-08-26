@@ -3,5 +3,6 @@ src/findel.v
 src/metaproperties.v
 -I proofs/
 proofs/fixed_rate_currency_exchange.v
+proofs/currency_exchange_external.v
 proofs/fixed_interest_rate_loan.v
 proofs/zero_coupon_bond.v
