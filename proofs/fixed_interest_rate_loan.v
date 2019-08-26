@@ -7,7 +7,6 @@ Definition firl_description (t : Time) :=
      (After (t + 2) (Scale 2 (One EUR)))
   ).
 
-Print execute.
 
 Lemma firl_generates_contracts :
   forall t scale I O balance time gtw ctr_id dsc_id next_id ledger result,
@@ -24,129 +23,261 @@ Proof.
 Qed.
 
 
-Lemma firl_generates_transactions :
-  forall t scale I O balance time gtw ctr_id dsc_id next_id ledger result,
-    execute (firl_description t) scale I O balance time
-            gtw ctr_id dsc_id next_id ledger = Some result
-    ->
-    res_ledger result <> ledger.
-Proof.
-  intros.
-  unfold firl_description in H.
-  simpl in H.
-  case_analysis H.
-  case_analysis H2.
-  - case_analysis H3.
-    case_analysis H4; simpl.
-    + admit.
-    + admit. (* This proof path shows that the ledger might not get changed. *)
-  - case_analysis H3.
-    case_analysis H4; simpl.
-    + admit.
-    + admit. (* This proof path shows that the ledger might not get changed. *)
-Admitted.
-
-
-Definition is_executed (c_id : Id) (s : State) := In (Executed c_id) (m_events s).
-
-Definition is_issued (c_id dsc_id : Id)(P : Primitive) (I O: Address) (sc : nat) (s : State):=
-  In (finctr c_id dsc_id P I O O sc) (m_contracts s).
-
-
-Lemma ltb_sound :
-  forall a b, a <? b = true -> a < b.
-Admitted.
-
-Lemma issuer_pays_the_owner_if_time_is_t_plus_2' :
-  forall s1 s2 t I O c_id dsc_id,
+(* The owner can be either paid or can trigger payment *)
+Lemma firl_step_O_to_I :
+  forall s1 s2 t I O sc ctr ctr_id dsc_id,
     step s1 s2 ->
-    m_global_time s1 >= t + 2 ->
-    m_global_time s2 >= t + 2 ->
     consistent_state s1 ->
-    is_issued c_id dsc_id (firl_description t) I O 1 s1 ->
-    O <> 0 ->  (* O is field is not 0x0 *) 
-    ~ is_executed c_id s1 ->
-    is_executed c_id s2 ->
-    exists tr tr_id,
-      In tr (m_ledger s2) /\
-      tr = (transaction tr_id c_id I O 2 EUR (t+2)).
+    ctr = finctr ctr_id dsc_id (firl_description t) I O O sc ->
+    In ctr (m_contracts s1) ->
+    In (Executed ctr_id) (m_events s2) -> 
+    O <> 0 ->
+    (exists tr,
+        In tr (m_ledger s2) /\
+        tr_from tr = O /\
+        tr_to tr = I /\
+        tr_amount tr = sc) \/
+    (exists ctr,
+        In ctr (m_contracts s2) /\
+        ctr_primitive ctr = (Or (Give (One USD)) (Give (One EUR))) /\
+        ctr_issuer ctr = I /\
+        ctr_proposed_owner ctr = O /\
+        ctr_scale ctr = sc) \/
+    (exists ctr,
+        In ctr (m_contracts s2) /\
+        ctr_primitive ctr = (Before t (Or (Give (One USD)) (Give (One EUR)))) /\
+        ctr_issuer ctr = I /\
+        ctr_proposed_owner ctr = O /\
+        ctr_scale ctr = sc).
 Proof.
   intros.
-  assert (H' := H).
-  unfold is_issued, is_executed in *.
-  eapply tick_not_applied in H'; eauto.
-  induction H.
-  - unfold append_new_ctr_to_state in *.
-    subst s2.
-    simpl in *.
-    unfold is_executed in H6.
-    simpl in H6.
-    destruct H6 as [H6 | H6]; try inversion H6.
-    unfold consistent_state in H2.
-    destruct H2 as [_ H2].
-    apply H2 in H3.
-    destruct H3 as [H3 _]; try contradiction.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-  - admit.
-Admitted.
+  induction H; subst s2.
+  - simpl in H3.
+    destruct H3 as [H3 | H3]; try inversion H3.
+    apply consistent_impl_exec in H2; auto.
+    subst ctr. contradiction.
+  - case_eq (ctr_eq_dec ctr0 ctr); intros; try contradiction.
+    subst ctr0. simpl in *. destruct H3 as [H3 | H3].
+    + unfold exec_ctr_in_state_with_owner in H10.
+      rewrite H1 in H10. simpl in H10.
+      case_analysis H10.
+      case_analysis H14.
+      * case_analysis H15.
+        case_analysis H16; right; left; eexists; split; try rewrite in_app_iff; try right.
+        ** simpl. left. trivial.
+        ** simpl. repeat split; trivial.
+           unfold can_join in H5.
+           destruct H5 as [H5 | H5]; subst; simpl in *; trivial.
+           subst O. contradiction.
+        ** simpl. left. trivial.
+        ** simpl. repeat split; trivial.
+           unfold can_join in H5.
+           destruct H5 as [H5 | H5]; subst; simpl in *; trivial.
+           subst O. contradiction.
+      * case_analysis H15.
+        case_analysis H16.
+        ** simpl in *. right. right.
+           eexists. split; simpl.
+           rewrite in_app_iff.
+           right. simpl. left. trivial.
+           simpl. unfold Before.
+           repeat split; trivial.
+           unfold can_join in H5.
+           destruct H5 as [H5 | H5]; subst; simpl in *; trivial.
+           subst O. contradiction.
+        ** simpl in *. right. right.
+           eexists. split; simpl.
+           rewrite in_app_iff.
+           right. simpl. left. trivial.
+           simpl. unfold Before.
+           repeat split; trivial.
+           unfold can_join in H5.
+           destruct H5 as [H5 | H5]; subst; simpl in *; trivial.
+           subst O. contradiction.
+    + apply consistent_impl_exec in H; auto. subst ctr. simpl in *. contradiction.
+  - case_eq (ctr_eq_dec ctr0 ctr); intros; try contradiction.
+    subst ctr0 ctr. simpl in *. unfold firl_description in H7. inversion H7.
+  - case_eq (ctr_eq_dec ctr0 ctr); intros; try contradiction.
+    subst ctr0 ctr. simpl in *. unfold firl_description in H7. inversion H7.
+  - case_eq (ctr_eq_dec ctr0 ctr); intros; try contradiction.
+    subst ctr0 ctr. simpl in *.
+    simpl in *. destruct H3 as [H3 | H3]; try inversion H3.
+    apply consistent_impl_exec in H; auto. contradiction.
+  - simpl in *. apply consistent_impl_exec in H2; auto. subst ctr. contradiction.
+Qed.
 
 
-Lemma issuer_pays_the_owner_if_time_is_t_plus_2 :
-  forall s1 s2 t I O c_id dsc_id,
+Lemma firl_steps_O_to_I :
+  forall s1 s2 t I O sc ctr ctr_id dsc_id,
     steps s1 s2 ->
-    m_global_time s1 = t ->
-    m_global_time s2 >= t + 2 ->
     consistent_state s1 ->
-    is_issued c_id dsc_id (firl_description t) I O 1 s1 ->
-    O <> 0 ->  (* O is field is not 0x0 *) 
-    ~ is_executed c_id s1 ->
-    is_executed c_id s2 ->
-    exists tr tr_id,
-      In tr (m_ledger s2) /\
-      tr = (transaction tr_id c_id I O 2 EUR (t+2)).
+    ctr = finctr ctr_id dsc_id (firl_description t) I O O sc ->
+    In ctr (m_contracts s1) ->
+    In (Executed ctr_id) (m_events s2) -> 
+    O <> 0 ->
+    (exists tr,
+        In tr (m_ledger s2) /\
+        tr_from tr = O /\
+        tr_to tr = I /\
+        tr_amount tr = sc) \/
+    (exists ctr,
+        In ctr (m_contracts s2) /\
+        ctr_primitive ctr = (Or (Give (One USD)) (Give (One EUR))) /\
+        ctr_issuer ctr = I /\
+        ctr_proposed_owner ctr = O /\
+        ctr_scale ctr = sc) \/
+    (exists ctr,
+        In ctr (m_contracts s2) /\
+        ctr_primitive ctr = (Before t (Or (Give (One USD)) (Give (One EUR)))) /\
+        ctr_issuer ctr = I /\
+        ctr_proposed_owner ctr = O /\
+        ctr_scale ctr = sc).
 Proof.
   intros.
-  induction H; intros.
-  - subst s2. omega.
-  - assert (S1 := H). assert (S2 := H7).
-    unfold is_executed in *.
-    set (c := {|
-      ctr_id := c_id;
-      ctr_desc_id := dsc_id0;
-      ctr_primitive := firl_description t;
-      ctr_issuer := I;
-      ctr_owner := O;
-      ctr_proposed_owner := O;
-      ctr_scale := 1 |}).
-    apply steps_effect_over_contract with (ctr := c) in H; auto.
+  induction H.
+  - subst s2.
+    apply consistent_impl_exec in H2; auto. subst ctr. contradiction.
+  - assert (HC := H). assert (HC' := H5).
+    eapply steps_effect_over_contract in H; eauto.
     destruct H as [H | [H | H]].
-    + eapply issuer_pays_the_owner_if_time_is_t_plus_2'; eauto.
-      eapply tick_not_applied in H7; eauto.
-      rewrite H7. auto.
-      apply steps_preserves_consistent_state in S1; auto.
-      apply steps_preserves_consistent_state in S1; auto.
-      apply steps_preserves_consistent_state in S1; auto.
-      unfold consistent_state in S1.
-      destruct S1 as [_ S1].
-      apply S1 in H.
-      destruct H as [H _]; try contradiction.
-      unfold is_executed. subst c. simpl in *. trivial.
-    + subst c. simpl in H.
-      apply IHsteps in H.
-      destruct H as [tr [td [H H']]].
-      exists tr, td.
-      split; trivial.
-      eapply step_does_not_remove_transactions; eauto.
-      admit.
-    + apply steps_preserves_consistent_state with (s' := s2) in H2.
-      ++ eapply events_consistent_step in H; eauto.
-         subst c. simpl in H.
-         unfold consistent_state in H2.
-         destruct H2 as [_ [_ H2]].
-         assert (~ (In (Executed c_id) (m_events s2) /\ In (Deleted c_id) (m_events s2))); auto.
-         contradict H8. split; trivial.
-      ++ eapply tran; eauto.
-Admitted.
+    + eapply firl_step_O_to_I; eauto.
+      eapply steps_preserves_consistent_state; eauto.
+    + rewrite H1 in H. simpl in H.  apply IHsteps in H.
+      destruct H as [H | [H | H]].
+      ++ left. destruct H as [tr [H H']].
+         exists tr. split; trivial.
+         eapply step_does_not_remove_transactions; eauto.
+      ++ destruct H as [ct [H H']].
+         case_eq (ctr_eq_dec ct ctr); intros.
+         +++ destruct H' as [H' H'']. subst ctr ct. simpl in H'.
+             unfold firl_description in H'. inversion H'.
+         +++ contradiction.
+      ++ destruct H as [ct [H H']].
+         case_eq (ctr_eq_dec ct ctr); intros.
+         +++ destruct H' as [H' H'']. subst ctr ct. simpl in H'.
+             unfold firl_description in H'. inversion H'.
+         +++ contradiction.
+    + eapply step_does_not_remove_events in H5.
+      exfalso.
+      apply steps_preserves_consistent_state in HC; auto.
+      apply step_preserves_consistent_state in HC'; auto.
+      destruct HC' as [_ [_ [_ [_ HC']]]].
+      eapply HC'; eauto.
+      subst ctr. simpl in *. trivial.
+Qed.
+
+
+Lemma firl_step_I_to_O :
+  forall s1 s2 t I O sc ctr ctr_id dsc_id,
+    step s1 s2 ->
+    consistent_state s1 ->
+    ctr = finctr ctr_id dsc_id (firl_description t) I O O sc ->
+    In ctr (m_contracts s1) ->
+    In (Executed ctr_id) (m_events s2) -> 
+    O <> 0 ->
+    (exists tr,
+        In tr (m_ledger s2) /\
+        tr_from tr = I /\
+        tr_to tr = O /\
+        tr_amount tr = sc * 2) \/
+    (exists ctr,
+        In ctr (m_contracts s2) /\
+        ctr_primitive ctr = After (t + 2) (Scale 2 (One EUR)) /\
+        ctr_issuer ctr = I /\
+        ctr_proposed_owner ctr = O /\
+        ctr_scale ctr = sc).
+Proof.
+  intros.
+  induction H; subst s2.
+  - simpl in H3.
+    destruct H3 as [H3 | H3]; try inversion H3.
+    apply consistent_impl_exec in H2; auto.
+    subst ctr. contradiction.
+  - case_eq (ctr_eq_dec ctr0 ctr); intros; try contradiction.
+    subst ctr0. simpl in *. destruct H3 as [H3 | H3].
+    + unfold exec_ctr_in_state_with_owner in H10.
+      rewrite H1 in H10. simpl in H10.
+      case_analysis H10.
+      case_analysis H14.
+      * case_analysis H15.
+        case_analysis H16.
+        ** left. eexists. simpl. split. left. trivial.
+           repeat split; trivial. simpl. unfold can_join in H5.
+           destruct H5 as [H5 | H5]; subst; simpl in *; trivial.
+           subst O. contradiction.
+        ** right. eexists. simpl. split. rewrite in_app_iff.
+           right. simpl. right. left. trivial.
+           simpl. unfold After. repeat split; trivial.
+           destruct H5 as [H5 | H5]; subst; simpl in *; trivial.
+           subst O. contradiction.
+      * case_analysis H15.
+        case_analysis H16.
+        ** left. eexists. simpl. split. left. trivial.
+           repeat split; trivial. simpl. unfold can_join in H5.
+           destruct H5 as [H5 | H5]; subst; simpl in *; trivial.
+           subst O. contradiction.
+        ** right. eexists. simpl. split. rewrite in_app_iff.
+           right. simpl. right. left. trivial.
+           simpl. unfold After. repeat split; trivial.
+           destruct H5 as [H5 | H5]; subst; simpl in *; trivial.
+           subst O. contradiction.
+    + apply consistent_impl_exec in H; auto. subst ctr. simpl in *. contradiction.
+  - case_eq (ctr_eq_dec ctr0 ctr); intros; try contradiction.
+    subst ctr0 ctr. simpl in *. unfold firl_description in H7. inversion H7.
+  - case_eq (ctr_eq_dec ctr0 ctr); intros; try contradiction.
+    subst ctr0 ctr. simpl in *. unfold firl_description in H7. inversion H7.
+  - case_eq (ctr_eq_dec ctr0 ctr); intros; try contradiction.
+    subst ctr0 ctr. simpl in *.
+    simpl in *. destruct H3 as [H3 | H3]; try inversion H3.
+    apply consistent_impl_exec in H; auto. contradiction.
+  - simpl in *. apply consistent_impl_exec in H2; auto. subst ctr. contradiction.
+Qed.
+
+
+Lemma firl_steps_I_to_O :
+  forall s1 s2 t I O sc ctr ctr_id dsc_id,
+    steps s1 s2 ->
+    consistent_state s1 ->
+    ctr = finctr ctr_id dsc_id (firl_description t) I O O sc ->
+    In ctr (m_contracts s1) ->
+    In (Executed ctr_id) (m_events s2) -> 
+    O <> 0 ->
+    (exists tr,
+        In tr (m_ledger s2) /\
+        tr_from tr = I /\
+        tr_to tr = O /\
+        tr_amount tr = sc * 2) \/
+    (exists ctr,
+        In ctr (m_contracts s2) /\
+        ctr_primitive ctr = After (t + 2) (Scale 2 (One EUR)) /\
+        ctr_issuer ctr = I /\
+        ctr_proposed_owner ctr = O /\
+        ctr_scale ctr = sc).
+Proof.
+  intros.
+  induction H.
+  - subst s2.
+    apply consistent_impl_exec in H2; auto. subst ctr. contradiction.
+  - assert (HC := H). assert (HC' := H5).
+    eapply steps_effect_over_contract in H; eauto.
+    destruct H as [H | [H | H]].
+    + eapply firl_step_I_to_O; eauto.
+      eapply steps_preserves_consistent_state; eauto.
+    + rewrite H1 in H. simpl in H.  apply IHsteps in H.
+      destruct H as [H | H].
+      ++ left. destruct H as [tr [H H']].
+         exists tr. split; trivial.
+         eapply step_does_not_remove_transactions; eauto.
+      ++ destruct H as [ct [H H']].
+         case_eq (ctr_eq_dec ct ctr); intros.
+         +++ destruct H' as [H' H'']. subst ctr ct. simpl in H'.
+             unfold firl_description in H'. inversion H'.
+         +++ contradiction.
+    + eapply step_does_not_remove_events in H5.
+      exfalso.
+      apply steps_preserves_consistent_state in HC; auto.
+      apply step_preserves_consistent_state in HC'; auto.
+      destruct HC' as [_ [_ [_ [_ HC']]]].
+      eapply HC'; eauto.
+      subst ctr. simpl in *. trivial.
+Qed.
