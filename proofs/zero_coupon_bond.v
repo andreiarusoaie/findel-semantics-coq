@@ -287,8 +287,8 @@ Proof.
     apply steps_preserves_consistent_state in H'; auto.
     apply steps_effect_over_contract with (ctr := ctr) in H; trivial.
     destruct H as [H|[H|H]]; trivial.
-    + eapply zcb_step_I_to_O_new_ctr in H5; eauto.
-      destruct H5 as [(t & tr & A1 & A2 & A3 & A4) | H5]; auto.
+    + eapply zcb_step_I_to_O in H5; eauto.
+      destruct H5 as [(tr & A1 & A2 & A3 & A4 & A5) | H5]; auto.
       left. exists tr. repeat split; trivial.
     + rewrite H1 in H. simpl in H.
       apply IHsteps in H.
