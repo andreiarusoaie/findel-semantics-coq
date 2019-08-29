@@ -160,13 +160,17 @@ Qed.
 Lemma firl_helper :
   forall s s' ctr t0 t1 desc,
     steps s s' ->
+    consistent_state s ->
     In ctr (m_contracts s) ->
     ctr_primitive ctr = Timebound t0 t1 desc ->
     In (Executed (ctr_id ctr)) (m_events s) ->
-    t0 <= (m_global_time s) /\
-    (m_global_time s) <= t1.
+    t0 <= (m_global_time s').
 Proof.
-  
+  intros.
+  induction H.
+  - subst s2. find_contradiction H0.
+  - admit.
+Admitted.
 
 
 Lemma firl_steps_O_to_I' :
@@ -195,9 +199,7 @@ Proof.
     destruct H as [H | [H | H]].
     + eapply firl_step_O_to_I'; eauto.
     + rewrite H1 in H. simpl in H.
-      
-    
-
+Admitted.     
 
 
 Lemma firl_steps_O_to_I :
@@ -208,6 +210,8 @@ Lemma firl_steps_O_to_I :
     In ctr (m_contracts s1) ->
     In (Executed ctr_id) (m_events s2) -> 
     O <> 0 ->
+      
+      
     (exists tr,
         In tr (m_ledger s2) /\
         tr_from tr = O /\
