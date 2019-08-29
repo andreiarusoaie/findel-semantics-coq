@@ -97,6 +97,109 @@ Proof.
 Qed.
 
 
+(* The owner can trigger payment whenever he wants ... *)
+Lemma firl_step_O_to_I' :
+  forall s1 s2 t I O sc ctr ctr_id dsc_id,
+    step s1 s2 ->
+    consistent_state s1 ->
+    ctr = finctr ctr_id dsc_id (firl_description t) I O O sc ->
+    In ctr (m_contracts s1) ->
+    In (Executed ctr_id) (m_events s2) ->
+    (m_global_time s2) >= t ->
+    t > 0 -> 
+    O <> 0 ->
+    (exists ctr,
+        In ctr (m_contracts s2) /\
+        ctr_primitive ctr = (Or (Give (One USD)) (Give (One EUR))) /\
+        ctr_issuer ctr = I /\
+        ctr_proposed_owner ctr = O /\
+        ctr_scale ctr = sc).
+Proof.
+  intros.
+  induction H; subst s2.
+  - simpl in H3. destruct H3 as [H3 | H3]; try inversion H3.
+    find_contradiction H2.
+  - ctr_case_analysis ctr ctr0.
+    simpl in *. destruct H3 as [H3 | H3].
+    + unfold exec_ctr_in_state_with_owner in H12.
+      rewrite H1 in H12. simpl in H12.
+      case_analysis H12.
+      case_analysis H16.
+      * case_analysis H17.
+        case_analysis H18.
+        ** apply ltb_sound_false in H14.
+           apply ltb_sound_true in H16.
+           contradict H14. omega.
+        ** eexists. split. rewrite in_app_iff. 
+           simpl. right. left. eauto.
+           repeat split; trivial.
+           simpl. resolve_owner H7.
+      * case_analysis H17.
+        case_analysis H18.
+        ** apply ltb_sound_false in H12.
+           apply ltb_sound_true in H16.
+           contradict H12. omega.
+        ** clear H20.
+           apply ltb_sound_false in H16.
+           apply ltb_sound_false in H14.
+           apply ltb_sound_false in H12.
+           contradict H14. omega.
+    + find_contradiction H.
+  - ctr_case_analysis ctr ctr0.
+    subst ctr. simpl in *. unfold firl_description in H9. inversion H9.
+  - ctr_case_analysis ctr ctr0.
+    subst ctr. simpl in *. unfold firl_description in H9. inversion H9.
+  - ctr_case_analysis ctr ctr0.
+    subst ctr. simpl in *.
+    simpl in *. destruct H3 as [H3 | H3]; try inversion H3.
+    find_contradiction H2.
+  - simpl in *. find_contradiction H2.
+Qed.
+
+
+Lemma firl_helper :
+  forall s s' ctr t0 t1 desc,
+    steps s s' ->
+    In ctr (m_contracts s) ->
+    ctr_primitive ctr = Timebound t0 t1 desc ->
+    In (Executed (ctr_id ctr)) (m_events s) ->
+    t0 <= (m_global_time s) /\
+    (m_global_time s) <= t1.
+Proof.
+  
+
+
+Lemma firl_steps_O_to_I' :
+  forall s1 s2 t I O sc ctr ctr_id dsc_id,
+    steps s1 s2 ->
+    consistent_state s1 ->
+    ctr = finctr ctr_id dsc_id (firl_description t) I O O sc ->
+    In ctr (m_contracts s1) ->
+    In (Executed ctr_id) (m_events s2) ->
+    (m_global_time s2) >= t ->
+    t > 0 -> 
+    O <> 0 ->
+    (exists ctr,
+        In ctr (m_contracts s2) /\
+        ctr_primitive ctr = (Or (Give (One USD)) (Give (One EUR))) /\
+        ctr_issuer ctr = I /\
+        ctr_proposed_owner ctr = O /\
+        ctr_scale ctr = sc).
+Proof.
+  intros.
+  induction H.
+  - subst s2. find_contradiction H2.
+  - assert (HC := H). assert (HC' := H5). assert (S := H).
+    eapply steps_effect_over_contract in H; eauto.
+    eapply steps_preserves_consistent_state in HC; eauto.
+    destruct H as [H | [H | H]].
+    + eapply firl_step_O_to_I'; eauto.
+    + rewrite H1 in H. simpl in H.
+      
+    
+
+
+
 Lemma firl_steps_O_to_I :
   forall s1 s2 t I O sc ctr ctr_id dsc_id,
     steps s1 s2 ->
