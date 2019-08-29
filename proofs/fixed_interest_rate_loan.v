@@ -52,12 +52,10 @@ Lemma firl_step_O_to_I :
 Proof.
   intros.
   induction H; subst s2.
-  - simpl in H3.
-    destruct H3 as [H3 | H3]; try inversion H3.
-    apply consistent_impl_exec in H2; auto.
-    subst ctr. contradiction.
-  - case_eq (ctr_eq_dec ctr0 ctr); intros; try contradiction.
-    subst ctr0. simpl in *. destruct H3 as [H3 | H3].
+  - simpl in H3. destruct H3 as [H3 | H3]; try inversion H3.
+    find_contradiction H2.
+  - ctr_case_analysis ctr ctr0.
+    simpl in *. destruct H3 as [H3 | H3].
     + unfold exec_ctr_in_state_with_owner in H10.
       rewrite H1 in H10. simpl in H10.
       case_analysis H10.
@@ -66,14 +64,10 @@ Proof.
         case_analysis H16; right; left; eexists; split; try rewrite in_app_iff; try right.
         ** simpl. left. trivial.
         ** simpl. repeat split; trivial.
-           unfold can_join in H5.
-           destruct H5 as [H5 | H5]; subst; simpl in *; trivial.
-           subst O. contradiction.
+           resolve_owner H5.
         ** simpl. left. trivial.
         ** simpl. repeat split; trivial.
-           unfold can_join in H5.
-           destruct H5 as [H5 | H5]; subst; simpl in *; trivial.
-           subst O. contradiction.
+           resolve_owner H5.
       * case_analysis H15.
         case_analysis H16.
         ** simpl in *. right. right.
@@ -82,28 +76,24 @@ Proof.
            right. simpl. left. trivial.
            simpl. unfold Before.
            repeat split; trivial.
-           unfold can_join in H5.
-           destruct H5 as [H5 | H5]; subst; simpl in *; trivial.
-           subst O. contradiction.
+           resolve_owner H5.
         ** simpl in *. right. right.
            eexists. split; simpl.
            rewrite in_app_iff.
            right. simpl. left. trivial.
            simpl. unfold Before.
            repeat split; trivial.
-           unfold can_join in H5.
-           destruct H5 as [H5 | H5]; subst; simpl in *; trivial.
-           subst O. contradiction.
+           resolve_owner H5.
     + apply consistent_impl_exec in H; auto. subst ctr. simpl in *. contradiction.
-  - case_eq (ctr_eq_dec ctr0 ctr); intros; try contradiction.
-    subst ctr0 ctr. simpl in *. unfold firl_description in H7. inversion H7.
-  - case_eq (ctr_eq_dec ctr0 ctr); intros; try contradiction.
-    subst ctr0 ctr. simpl in *. unfold firl_description in H7. inversion H7.
-  - case_eq (ctr_eq_dec ctr0 ctr); intros; try contradiction.
-    subst ctr0 ctr. simpl in *.
+  - ctr_case_analysis ctr ctr0.
+    subst ctr. simpl in *. unfold firl_description in H7. inversion H7.
+  - ctr_case_analysis ctr ctr0.
+    subst ctr. simpl in *. unfold firl_description in H7. inversion H7.
+  - ctr_case_analysis ctr ctr0.
+    subst ctr. simpl in *.
     simpl in *. destruct H3 as [H3 | H3]; try inversion H3.
-    apply consistent_impl_exec in H; auto. contradiction.
-  - simpl in *. apply consistent_impl_exec in H2; auto. subst ctr. contradiction.
+    find_contradiction H2.
+  - simpl in *. find_contradiction H2.
 Qed.
 
 
@@ -135,8 +125,7 @@ Lemma firl_steps_O_to_I :
 Proof.
   intros.
   induction H.
-  - subst s2.
-    apply consistent_impl_exec in H2; auto. subst ctr. contradiction.
+  - subst s2. find_contradiction H2.
   - assert (HC := H). assert (HC' := H5).
     eapply steps_effect_over_contract in H; eauto.
     destruct H as [H | [H | H]].
@@ -191,10 +180,9 @@ Proof.
   induction H; subst s2.
   - simpl in H3.
     destruct H3 as [H3 | H3]; try inversion H3.
-    apply consistent_impl_exec in H2; auto.
-    subst ctr. contradiction.
-  - case_eq (ctr_eq_dec ctr0 ctr); intros; try contradiction.
-    subst ctr0. simpl in *. destruct H3 as [H3 | H3].
+    find_contradiction H2.
+  - ctr_case_analysis ctr ctr0.
+    simpl in *. destruct H3 as [H3 | H3].
     + unfold exec_ctr_in_state_with_owner in H10.
       rewrite H1 in H10. simpl in H10.
       case_analysis H10.
@@ -202,35 +190,32 @@ Proof.
       * case_analysis H15.
         case_analysis H16.
         ** left. eexists. simpl. split. left. trivial.
-           repeat split; trivial. simpl. unfold can_join in H5.
-           destruct H5 as [H5 | H5]; subst; simpl in *; trivial.
-           subst O. contradiction.
+           repeat split; trivial. simpl.
+           resolve_owner H5.
         ** right. eexists. simpl. split. rewrite in_app_iff.
            right. simpl. right. left. trivial.
            simpl. unfold After. repeat split; trivial.
-           destruct H5 as [H5 | H5]; subst; simpl in *; trivial.
-           subst O. contradiction.
+           resolve_owner H5.
       * case_analysis H15.
         case_analysis H16.
         ** left. eexists. simpl. split. left. trivial.
-           repeat split; trivial. simpl. unfold can_join in H5.
-           destruct H5 as [H5 | H5]; subst; simpl in *; trivial.
-           subst O. contradiction.
+           repeat split; trivial. simpl.
+           resolve_owner H5.
         ** right. eexists. simpl. split. rewrite in_app_iff.
            right. simpl. right. left. trivial.
            simpl. unfold After. repeat split; trivial.
-           destruct H5 as [H5 | H5]; subst; simpl in *; trivial.
-           subst O. contradiction.
+           resolve_owner H5.
     + apply consistent_impl_exec in H; auto. subst ctr. simpl in *. contradiction.
-  - case_eq (ctr_eq_dec ctr0 ctr); intros; try contradiction.
-    subst ctr0 ctr. simpl in *. unfold firl_description in H7. inversion H7.
-  - case_eq (ctr_eq_dec ctr0 ctr); intros; try contradiction.
-    subst ctr0 ctr. simpl in *. unfold firl_description in H7. inversion H7.
-  - case_eq (ctr_eq_dec ctr0 ctr); intros; try contradiction.
-    subst ctr0 ctr. simpl in *.
-    simpl in *. destruct H3 as [H3 | H3]; try inversion H3.
-    apply consistent_impl_exec in H; auto. contradiction.
-  - simpl in *. apply consistent_impl_exec in H2; auto. subst ctr. contradiction.
+  - ctr_case_analysis ctr ctr0.
+    subst ctr. simpl in *. unfold firl_description in H7. inversion H7.
+  - ctr_case_analysis ctr ctr0.
+    subst ctr. simpl in *. unfold firl_description in H7. inversion H7.
+  - ctr_case_analysis ctr ctr0. 
+    subst ctr. simpl in *.
+    simpl in *. 
+    destruct H3 as [H3 | H3]; try inversion H3.
+    find_contradiction H3.
+  - simpl in *. find_contradiction H2.
 Qed.
 
 
@@ -256,8 +241,7 @@ Lemma firl_steps_I_to_O :
 Proof.
   intros.
   induction H.
-  - subst s2.
-    apply consistent_impl_exec in H2; auto. subst ctr. contradiction.
+  - subst s2. find_contradiction H2.
   - assert (HC := H). assert (HC' := H5).
     eapply steps_effect_over_contract in H; eauto.
     destruct H as [H | [H | H]].
