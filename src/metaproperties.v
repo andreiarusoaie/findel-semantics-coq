@@ -31,6 +31,16 @@ Ltac case_analysis H :=
   end.
 
 
+Ltac resolve_owner H :=
+  unfold can_join in H; simpl in H;
+  destruct H as [H | H]; subst;
+  trivial; try contradiction.
+
+
+Ltac ctr_case_analysis ctr ctr' :=
+  case_eq (ctr_eq_dec ctr ctr'); intros; try contradiction; subst ctr'.
+
+
 (* Misc *)
 
 Definition consistent_state (s : State) :=
@@ -53,6 +63,11 @@ Proof.
   destruct H0 as [H0 _].
   trivial.
 Qed.
+
+Ltac find_contradiction H :=
+  match goal with
+  | H : In ?ctr _ |- _ =>  apply consistent_impl_exec in H; auto; subst; simpl in *; try contradiction
+  end.
 
 
 Lemma rest_not_equal_to_list (A : Type):
