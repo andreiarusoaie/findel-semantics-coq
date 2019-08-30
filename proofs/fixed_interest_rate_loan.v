@@ -367,6 +367,7 @@ Proof.
       subst ctr. simpl in *. eauto.
 Qed.
 
+
 (* Owner's rights without time constraints over states:
  - if the contract is executed and the owner joins the generated
    contract, then a payment from I to O is registered;
@@ -435,7 +436,7 @@ Proof.
 Qed.
 
 
-Lemma firl_steps_I_to_O :
+Theorem firl_steps_I_to_O :
   forall s1 s2 t I O sc ctr ctr_id dsc_id,
     steps s1 s2 ->
     consistent_state s1 ->
@@ -479,5 +480,134 @@ Proof.
       apply step_preserves_consistent_state in HC'; auto.
       destruct HC' as [_ [_ [_ [_ HC']]]].
       eapply HC'; eauto.
+      subst ctr. simpl in *. trivial.
+Qed.
+
+
+(* Owner can demand the execution later if the current timestamp is not yet t + 2 *)
+Lemma firl_step_I_to_O' :
+  forall s1 s2 t I O sc ctr ctr_id dsc_id,
+    step s1 s2 ->
+    consistent_state s1 ->
+    ctr = finctr ctr_id dsc_id (firl_description t) I O O sc ->
+    In ctr (m_contracts s1) ->
+    In (Executed ctr_id) (m_events s2) -> 
+    O <> 0 ->
+    (m_global_time s2) < t + 2 ->
+    (exists ctr,
+        In ctr (m_contracts s2) /\
+        ctr_primitive ctr = After (t + 2) (Scale 2 (One EUR)) /\
+        ctr_issuer ctr = I /\
+        ctr_proposed_owner ctr = O /\
+        ctr_scale ctr = sc).
+Proof.
+  intros.
+  induction H; subst s2.
+  - simpl in H3.
+    destruct H3 as [H3 | H3]; try inversion H3.
+    find_contradiction H2.
+  - ctr_case_analysis ctr ctr0.
+    simpl in *. destruct H3 as [H3 | H3].
+    + unfold exec_ctr_in_state_with_owner in H11.
+      rewrite H1 in H11. simpl in H11.
+      case_analysis H11.
+      case_analysis H15.
+      * case_analysis H15.
+        case_analysis H16.
+        ** apply ltb_sound_true in H15.
+           contradict H15. omega.
+        ** eexists. simpl. split. rewrite in_app_iff.
+           right. simpl. right. left. trivial.
+           simpl. unfold After. repeat split; trivial.
+           resolve_owner H6.
+      * case_analysis H15.
+        case_analysis H16.
+        ** apply ltb_sound_true in H15.
+           apply ltb_sound_false in H13.
+           contradict H13. omega.
+        ** eexists. simpl. split. rewrite in_app_iff.
+           right. simpl. right. left. trivial.
+           simpl. unfold After. repeat split; trivial.
+           resolve_owner H6.
+    + find_contradiction H.
+  - ctr_case_analysis ctr ctr0.
+    subst ctr. simpl in *. unfold firl_description in H8. inversion H8.
+  - ctr_case_analysis ctr ctr0.
+    subst ctr. simpl in *. unfold firl_description in H8. inversion H8.
+  - ctr_case_analysis ctr ctr0. 
+    subst ctr. simpl in *.
+    simpl in *. 
+    destruct H3 as [H3 | H3]; try inversion H3.
+    find_contradiction H3.
+  - simpl in *. find_contradiction H2.
+Qed.
+
+
+Lemma firl_steps_I_to_O' :
+  forall s1 s2 t I O sc ctr ctr_id dsc_id,
+    steps s1 s2 ->
+    consistent_state s1 ->
+    ctr = finctr ctr_id dsc_id (firl_description t) I O O sc ->
+    In ctr (m_contracts s1) ->
+    In (Executed ctr_id) (m_events s2) -> 
+    O <> 0 ->
+    (m_global_time s2) < t + 2 ->
+    (exists ctr,
+        In ctr (m_contracts s2) /\
+        ctr_primitive ctr = After (t + 2) (Scale 2 (One EUR)) /\
+        ctr_issuer ctr = I /\
+        ctr_proposed_owner ctr = O /\
+        ctr_scale ctr = sc).
+Proof.
+  intros.
+  induction H.
+  - subst s2. find_contradiction H2.
+  - assert (HC := H). assert (HC' := H5). assert (S := H6).
+    eapply steps_effect_over_contract in H; eauto.
+    eapply steps_preserves_consistent_state in HC; eauto.
+    destruct H as [H | [H | H]].
+    + eapply firl_step_I_to_O'; eauto.
+    + rewrite H1 in H. simpl in H.  apply IHsteps in H.
+      * destruct H as [ctr' [H H']].
+        induction H6.
+        ** subst s2.
+           exists ctr'. split; trivial.
+           simpl. right. trivial.
+        ** ctr_case_analysis ctr' ctr0.
+           unfold exec_ctr_in_state_with_owner in H12.
+           destruct H' as [H' H''].
+           rewrite H' in H12. simpl in H12.
+           case_if H12.
+           case_if H17.
+           *** apply ltb_sound_true in H12.
+               apply time_inc in S. contradict H12. omega.
+           *** subst s2. simpl. eexists.
+               split.
+           +++ rewrite in_app_iff. right. subst ctrs'. simpl. left. eauto.
+           +++ simpl. split; trivial.
+               destruct H'' as [A [B C]]. repeat split; trivial.
+               resolve_owner H7.
+        ** ctr_case_analysis ctr' ctr0.
+           destruct H' as [H' H''].
+           rewrite H' in H9. inversion H9.
+        ** ctr_case_analysis ctr' ctr0.
+           destruct H' as [H' H''].
+           rewrite H' in H9. inversion H9.
+        ** ctr_case_analysis ctr' ctr0.
+           unfold exec_ctr_in_state_with_owner in H10.
+           destruct H' as [H' H''].
+           rewrite H' in H10. simpl in H10.
+           case_if H10.
+           *** apply ltb_sound_true in H13.
+               assert (C : m_global_time s < INF); try apply infinite.
+               omega.
+           *** case_if H15.
+        ** subst s2. eexists. simpl. eauto.
+      * apply time_inc in H6. omega.
+    + eapply step_does_not_remove_events in H6.
+      exfalso.
+      eapply step_preserves_consistent_state in S; eauto.
+      destruct S as [_ [_ [_ [_ S]]]].
+      eapply S; eauto.
       subst ctr. simpl in *. trivial.
 Qed.
