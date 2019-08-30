@@ -946,6 +946,17 @@ Proof.
   intros. induction H; subst s'; simpl; try omega.
 Qed.
 
+Theorem time_inc_steps:
+forall s s',
+  steps s s' ->
+  m_global_time s <= m_global_time s'.
+Proof.
+  intros.
+  induction H.
+  - subst s2; omega.
+  - apply time_inc in H0. omega.
+Qed.
+
 Theorem no_tick_if_event_generated:
 forall s s' t,
   step s s' ->
