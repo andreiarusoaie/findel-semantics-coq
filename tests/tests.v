@@ -1,23 +1,18 @@
-Load helpers.
-
-(* firl = fixed interest rate loan *)
-
-Definition firl_description (t : Time) :=
-  (And
-     (Before t (Or (Give (One USD)) (Give (One EUR))))
-     (After (t +2) (Scale 2 (One EUR)))
-  ).
+Load findel.
 
 Definition Alice := 101.
 Definition Bob   := 102.
-Print execute.
 Definition default_scale := 1.
-Definition default_time := 1.
+Definition now := 1.
+Definition time (z : nat) := z.
 Definition fresh_id := 10.
 Definition default_ctr_id := 0.
 Definition default_desc_id := 0.
 Definition default_ledger : list Transaction := [].
 Definition default_gateway : list Gateway := [].
+Print Gateway.
+Definition g1 : Gateway := (gateway 1000 0 100).
+Definition g2 : Gateway := (gateway 1001 1 1000).
 Definition emptybal : Address -> Currency -> Z :=
   fun (a : Address) (c : Currency) => Z_of_nat 0.
 Definition alice_bal_usd :=
@@ -28,9 +23,12 @@ Definition bob_bal_usd :=
   update alice_bal_eur Bob USD 20.
 Definition bob_bal_eur :=
   update bob_bal_usd Bob EUR 30.
-Definition some_balance := bob_bal_eur.
+Definition default_balance := bob_bal_eur.
 
-Eval compute in some_balance Bob USD.
+Eval compute in default_balance Bob USD.
+Eval compute in default_balance Bob EUR.
+Eval compute in default_balance Alice USD.
+Eval compute in default_balance Alice EUR.
 
 Definition default_exec (p : Primitive) :=
   (execute
@@ -38,97 +36,218 @@ Definition default_exec (p : Primitive) :=
      default_scale
      Alice
      Bob
-     some_balance
-     3
+     default_balance
+     now
      default_gateway
-     default_ctr_id 
+     default_ctr_id
+     default_desc_id
+     fresh_id
+     default_ledger).
+
+Definition default_exec_gtw (p : Primitive) (g : Gateway) :=
+  (execute
+     p
+     default_scale
+     Alice
+     Bob
+     default_balance
+     now
+     [g]
+     default_ctr_id
      default_desc_id
      fresh_id
      default_ledger).
 
 
-Definition result_ := default_exec (firl_description 3).
-Print result_.
-Eval compute in result_.
-Check result_.
-Check (match result_ with
-                 | None => []
-                 | Some v => res_contracts v
-       end).
+Definition T1_one := One USD.
+Definition T2_simple_currency_exchange :=
+  (And
+     (Give (Scale 11 (One USD)))
+     (Scale 10 (One EUR))
+  ).
+Definition T3_zcb := (At (now + 1) (Scale 10 (One USD))).
+Definition T4_bond_with_2_coupons :=
+  (And
+     (And
+        (At (now + 1) (One USD))
+        (At (now + 2) (One EUR))
+     )
+     (At (now + 3) (Scale 5 (One USD)))
+  ).
+Definition T5_european_option :=
+  (At (now + 1) (Or (One USD) (One EUR))).
+Definition T6_boolean_gateway (g : Gateway) :=
+  (If (gtw_addr g) (One USD) (One EUR)).
+Definition T7_numeric_gateway :=
+  (ScaleObs (gtw_addr g2) (One USD)).
 
-Eval compute in (match result_ with
-                 | None => emptybal
-                 | Some v => res_balance v
-                 end) Bob USD.
 
-Eval compute in (match result_ with
-                 | None => []
-                 | Some v => res_contracts v
-       end).
-
-Lemma gsdfg : forall r, result_ = r.
-  intros. unfold result_.
-  unfold firl_description, default_exec.
-  simpl.
-  case_eq (INF <? default_time); intros.
-  - admit.
-  - simpl.
-  
-
-Definition balance_of (r : option Result) (a : Address) (c : Currency) :=
-  (match r with
-   | None => emptybal
-   | Some v => res_balance v
-   end) a c.
-Check balance_of.
-Check result_.
-Check (balance_of result_ Alice USD).
-
-Eval compute in (balance_of result_) Alice USD.
-Eval compute in (balance_of result_ Alice EUR).
-Eval compute in (balance_of result_ Bob USD).
-Eval compute in (balance_of result_ Bob EUR).
-
+Eval compute in default_exec T1_one.
 Eval compute in
-    (match result_ with
-    | None => emptybal
-    | Some v => res_balance v
-    end) Bob USD.
+    (match default_exec T1_one with
+     | None => 0%Z
+     | Some res => match res with
+                     result bal _ _ _ => bal Bob USD
+                   end
+     end
+    ).
 Eval compute in
-    (match exe with
-    | None => emptybal
-    | Some v => res_balance v
-    end) Alice EUR.
+    (match default_exec T1_one with
+     | None => 0%Z
+     | Some res => match res with
+                     result bal _ _ _ => bal Alice USD
+                   end
+     end
+    ).
+
+
+
+Eval compute in default_exec T2_simple_currency_exchange.
 Eval compute in
-    (match exe with
-    | None => emptybal
-    | Some v => res_balance v
-    end) Alice EUR.
+    (match default_exec T2_simple_currency_exchange with
+     | None => 0%Z
+     | Some res => match res with
+                     result bal _ _ _ => bal Bob USD
+                   end
+     end
+    ).
+Eval compute in
+    (match default_exec T2_simple_currency_exchange with
+     | None => 0%Z
+     | Some res => match res with
+                     result bal _ _ _ => bal Alice USD
+                   end
+     end
+    ).
+Eval compute in
+    (match default_exec T2_simple_currency_exchange with
+     | None => 0%Z
+     | Some res => match res with
+                     result bal _ _ _ => bal Bob EUR
+                   end
+     end
+    ).
+Eval compute in
+    (match default_exec T2_simple_currency_exchange with
+     | None => 0%Z
+     | Some res => match res with
+                     result bal _ _ _ => bal Alice EUR
+                   end
+     end
+    ).
 
-Definition double_your_loan_ctr
-           (alice bob : Address)
-           (ctr_id dsc_id : Id)
-           (t0 : Time) :=
-  finctr ctr_id
-         dsc_id
-         (double_your_loan_desc t0)
-         alice
-         bob
-         bob
-         1.
 
-Ltac exec_double_your_loan H :=
-  match type of H with
-  | exec_ctr_in_state_with_owner (double_your_loan_ctr _ _ _ _ _) _ _ = Some _ =>
-    unfold double_your_loan_ctr, double_your_loan_desc, exec_ctr_in_state_with_owner in H; simpl in H; inversion H; clear H
-  end.
+Eval compute in default_exec T3_zcb.
+Eval compute in
+    (match default_exec T3_zcb with
+     | None => 0%Z
+     | Some res => match res with
+                     result bal _ _ _ => bal Bob USD
+                   end
+     end
+    ).
+Eval compute in
+    (match default_exec T3_zcb with
+     | None => 0%Z
+     | Some res => match res with
+                     result bal _ _ _ => bal Alice USD
+                   end
+     end
+    ).
 
 
-Lemma bob_requests_double_loan_from_alice :
-  forall s1 alice bob ctr_id dsc_id result t0,
-    exec_ctr_in_state_with_owner
-      (double_your_loan_ctr alice bob ctr_id dsc_id t0) s1 bob =
-    Some result ->
-    exists ctr,
-      % ctr ∈ (res_contracts result) | alice --> bob | (Timebound t0 INF (Scale 2 (One EUR))) %.
-Proof.
+Eval compute in default_exec T5_european_option.
+Eval compute in
+    (match default_exec T5_european_option with
+     | None => 0%Z
+     | Some res => match res with
+                     result bal _ _ _ => bal Bob USD
+                   end
+     end
+    ).
+Eval compute in
+    (match default_exec T5_european_option with
+     | None => 0%Z
+     | Some res => match res with
+                     result bal _ _ _ => bal Alice USD
+                   end
+     end
+    ).
+Eval compute in
+    (match default_exec T5_european_option with
+     | None => 0%Z
+     | Some res => match res with
+                     result bal _ _ _ => bal Bob EUR
+                   end
+     end
+    ).
+Eval compute in
+    (match default_exec T5_european_option with
+     | None => 0%Z
+     | Some res => match res with
+                     result bal _ _ _ => bal Alice EUR
+                   end
+     end
+    ).
+Eval compute in
+    (match default_exec T5_european_option with
+     | None => []
+     | Some res => match res with
+                     result _ c _ _ => c
+                   end
+     end
+    ).
+
+
+Eval compute in (default_exec_gtw (T6_boolean_gateway g1) g1).
+Eval compute in
+    (match (default_exec_gtw (T6_boolean_gateway g1) g1) with
+     | None => 0%Z
+     | Some res => match res with
+                     result bal _ _ _ => bal Bob EUR
+                   end
+     end
+    ).
+Eval compute in
+    (match (default_exec_gtw (T6_boolean_gateway g1) g1) with
+     | None => 0%Z
+     | Some res => match res with
+                     result bal _ _ _ => bal Alice EUR
+                   end
+     end
+    ).
+Eval compute in (default_exec_gtw (T6_boolean_gateway g2) g2).
+Eval compute in
+    (match (default_exec_gtw (T6_boolean_gateway g2) g2) with
+     | None => 0%Z
+     | Some res => match res with
+                     result bal _ _ _ => bal Bob USD
+                   end
+     end
+    ).
+Eval compute in
+    (match (default_exec_gtw (T6_boolean_gateway g2) g2) with
+     | None => 0%Z
+     | Some res => match res with
+                     result bal _ _ _ => bal Alice USD
+                   end
+     end
+    ).
+
+Eval compute in (default_exec_gtw T7_numeric_gateway g2).
+Eval compute in
+    (match (default_exec_gtw T7_numeric_gateway g2) with
+     | None => 0%Z
+     | Some res => match res with
+                     result bal _ _ _ => bal Bob USD
+                   end
+     end
+    ).
+Eval compute in
+    (match (default_exec_gtw T7_numeric_gateway g2) with
+     | None => 0%Z
+     | Some res => match res with
+                     result bal _ _ _ => bal Alice USD
+                   end
+     end
+    ).
