@@ -43,7 +43,7 @@ Definition default_exec (p : Primitive) :=
      fresh_id
      default_ledger).
 
-Definition default_exec_gtw (p : Primitive) (g : Gateway) :=
+Definition default_exec_gtw (p : Primitive) (g : list Gateway) :=
   (execute
      p
      default_scale
@@ -51,7 +51,7 @@ Definition default_exec_gtw (p : Primitive) (g : Gateway) :=
      Bob
      default_balance
      now
-     [g]
+     g
      default_ctr_id
      default_desc_id
      fresh_id
@@ -79,6 +79,25 @@ Definition T6_boolean_gateway (g : Gateway) :=
   (If (gtw_addr g) (One USD) (One EUR)).
 Definition T7_numeric_gateway :=
   (ScaleObs (gtw_addr g2) (One USD)).
+Definition T8_complex_scale_obs (g g' : Gateway) :=
+  (Scale 10
+         (And
+            (ScaleObs (gtw_addr g) (Give (Or
+                                            (Scale 5 (One USD))
+                                            (ScaleObs (gtw_addr g) (Scale 10 (One EUR)))
+                                         )
+                                   )
+            )
+            (If (gtw_addr g')
+                Zero
+                (And
+                   (Scale 3 (One USD))
+                   (Give (Scale 7 (One EUR)))
+                )
+            )
+         )
+  ).
+
 
 
 Eval compute in default_exec T1_one.
@@ -198,9 +217,9 @@ Eval compute in
     ).
 
 
-Eval compute in (default_exec_gtw (T6_boolean_gateway g1) g1).
+Eval compute in (default_exec_gtw (T6_boolean_gateway g1) [g1]).
 Eval compute in
-    (match (default_exec_gtw (T6_boolean_gateway g1) g1) with
+    (match (default_exec_gtw (T6_boolean_gateway g1) [g1]) with
      | None => 0%Z
      | Some res => match res with
                      result bal _ _ _ => bal Bob EUR
@@ -208,16 +227,16 @@ Eval compute in
      end
     ).
 Eval compute in
-    (match (default_exec_gtw (T6_boolean_gateway g1) g1) with
+    (match (default_exec_gtw (T6_boolean_gateway g1) [g1]) with
      | None => 0%Z
      | Some res => match res with
                      result bal _ _ _ => bal Alice EUR
                    end
      end
     ).
-Eval compute in (default_exec_gtw (T6_boolean_gateway g2) g2).
+Eval compute in (default_exec_gtw (T6_boolean_gateway g2) [g2]).
 Eval compute in
-    (match (default_exec_gtw (T6_boolean_gateway g2) g2) with
+    (match (default_exec_gtw (T6_boolean_gateway g2) [g2]) with
      | None => 0%Z
      | Some res => match res with
                      result bal _ _ _ => bal Bob USD
@@ -225,7 +244,7 @@ Eval compute in
      end
     ).
 Eval compute in
-    (match (default_exec_gtw (T6_boolean_gateway g2) g2) with
+    (match (default_exec_gtw (T6_boolean_gateway g2) [g2]) with
      | None => 0%Z
      | Some res => match res with
                      result bal _ _ _ => bal Alice USD
@@ -233,9 +252,9 @@ Eval compute in
      end
     ).
 
-Eval compute in (default_exec_gtw T7_numeric_gateway g2).
+Eval compute in (default_exec_gtw T7_numeric_gateway [g2]).
 Eval compute in
-    (match (default_exec_gtw T7_numeric_gateway g2) with
+    (match (default_exec_gtw T7_numeric_gateway [g2]) with
      | None => 0%Z
      | Some res => match res with
                      result bal _ _ _ => bal Bob USD
@@ -243,10 +262,78 @@ Eval compute in
      end
     ).
 Eval compute in
-    (match (default_exec_gtw T7_numeric_gateway g2) with
+    (match (default_exec_gtw T7_numeric_gateway [g2]) with
      | None => 0%Z
      | Some res => match res with
                      result bal _ _ _ => bal Alice USD
+                   end
+     end
+    ).
+
+Eval compute in (default_exec_gtw (T8_complex_scale_obs g1 g2) [g1; g2]).
+Eval compute in
+    (match (default_exec_gtw  (T8_complex_scale_obs g1 g2) [g1; g2]) with
+     | None => 0%Z
+     | Some res => match res with
+                     result bal _ _ _ => bal Bob USD
+                   end
+     end
+    ).
+Eval compute in
+    (match (default_exec_gtw  (T8_complex_scale_obs g1 g2) [g1; g2]) with
+     | None => 0%Z
+     | Some res => match res with
+                     result bal _ _ _ => bal Alice USD
+                   end
+     end
+    ).
+Eval compute in (default_exec_gtw (T8_complex_scale_obs g2 g1) [g1; g2]).
+Eval compute in
+    (match (default_exec_gtw  (T8_complex_scale_obs g2 g1) [g1; g2]) with
+     | None => 0%Z
+     | Some res => match res with
+                     result bal _ _ _ => bal Bob USD
+                   end
+     end
+    ).
+Eval compute in
+    (match (default_exec_gtw  (T8_complex_scale_obs g2 g1) [g1; g2]) with
+     | None => 0%Z
+     | Some res => match res with
+                     result bal _ _ _ => bal Alice USD
+                   end
+     end
+    ).
+Eval compute in
+    (match (default_exec_gtw  (T8_complex_scale_obs g1 g2) [g1; g2]) with
+     | None => 0%Z
+     | Some res => match res with
+                     result bal _ _ _ => bal Bob EUR
+                   end
+     end
+    ).
+Eval compute in
+    (match (default_exec_gtw  (T8_complex_scale_obs g1 g2) [g1; g2]) with
+     | None => 0%Z
+     | Some res => match res with
+                     result bal _ _ _ => bal Alice EUR
+                   end
+     end
+    ).
+Eval compute in (default_exec_gtw (T8_complex_scale_obs g2 g1) [g1; g2]).
+Eval compute in
+    (match (default_exec_gtw  (T8_complex_scale_obs g2 g1) [g1; g2]) with
+     | None => 0%Z
+     | Some res => match res with
+                     result bal _ _ _ => bal Bob EUR
+                   end
+     end
+    ).
+Eval compute in
+    (match (default_exec_gtw  (T8_complex_scale_obs g2 g1) [g1; g2]) with
+     | None => 0%Z
+     | Some res => match res with
+                     result bal _ _ _ => bal Alice EUR
                    end
      end
     ).
