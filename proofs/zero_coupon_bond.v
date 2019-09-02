@@ -401,59 +401,58 @@ Qed.
 
 
 
-Lemma zcb_step_I_to_O' :
-  forall s1 s2 ctr_id dsc_id now period I O sc ctr,
-    step s1 s2 ->
-    consistent_state s1 ->
-    ctr = finctr ctr_id dsc_id (zcb_desc now period) I O O sc ->
-    In ctr (m_contracts s1) ->
-    In (Executed ctr_id) (m_events s2) ->
-    O <> 0 ->
-    (m_global_time s2) > now + period ->
-    (exists tr,
-      In tr (m_ledger s2) /\
-      tr_ctr_id tr = ctr_id /\
-      tr_from tr = I /\
-      tr_to tr = O /\
-      tr_amount tr = sc * 11).
-Proof.
-Admitted.
+(* Lemma zcb_step_I_to_O' : *)
+(*   forall s1 s2 ctr_id dsc_id now period I O sc ctr, *)
+(*     step s1 s2 -> *)
+(*     consistent_state s1 -> *)
+(*     ctr = finctr ctr_id dsc_id (zcb_desc now period) I O O sc -> *)
+(*     In ctr (m_contracts s1) -> *)
+(*     In (Executed ctr_id) (m_events s2) -> *)
+(*     O <> 0 -> *)
+(*     (m_global_time s2) > now + period -> *)
+(*     (exists tr, *)
+(*       In tr (m_ledger s2) /\ *)
+(*       tr_ctr_id tr = ctr_id /\ *)
+(*       tr_from tr = I /\ *)
+(*       tr_to tr = O /\ *)
+(*       tr_amount tr = sc * 11). *)
+(* Proof. *)
+(* Admitted. *)
 
-Lemma zcb_steps_I_to_O' :
-  forall s1 s2 ctr_id dsc_id now period I O sc ctr,
-    steps s1 s2 ->
-    consistent_state s1 ->
-    ctr = finctr ctr_id dsc_id (zcb_desc now period) I O O sc ->
-    In ctr (m_contracts s1) ->
-    In (Executed ctr_id) (m_events s2) ->
-    O <> 0 ->
-    (m_global_time s2) > now + period ->
-    (m_global_time s1) = now ->
-    (exists tr,
-      In tr (m_ledger s2) /\
-      tr_ctr_id tr = ctr_id /\
-      tr_from tr = I /\
-      tr_to tr = O /\
-      tr_amount tr = sc * 11).
-Proof.
-  intros.
-  induction H.
-  - subst s2. omega.
-  - assert (Ss := H). assert (S := H7).
-    eapply steps_effect_over_contract in H; eauto.
-    eapply steps_preserves_consistent_state in Ss; eauto.
-    destruct H as [H | [H | H]].
-    + eapply zcb_step_I_to_O' in S; eauto.
-    + rewrite H1 in H. simpl in H.
-      eapply IHsteps in H.
-      * destruct H as [tr [H H']].
-        exists tr. split; trivial.
-        eapply step_does_not_remove_transactions; eauto.
-      * induction H7; subst s2.
-        ** find_contradiction H2.
-        ** ctr_case_analysis ctr ctr0. simpl in H5. trivial.
-        ** ctr_case_analysis ctr ctr0. simpl in H5. trivial.
-        ** ctr_case_analysis ctr ctr0. simpl in H5. trivial.
-        ** ctr_case_analysis ctr ctr0. simpl in H5. trivial.
-        ** simpl in *. f
-
+(* Lemma zcb_steps_I_to_O' : *)
+(*   forall s1 s2 ctr_id dsc_id now period I O sc ctr, *)
+(*     steps s1 s2 -> *)
+(*     consistent_state s1 -> *)
+(*     ctr = finctr ctr_id dsc_id (zcb_desc now period) I O O sc -> *)
+(*     In ctr (m_contracts s1) -> *)
+(*     In (Executed ctr_id) (m_events s2) -> *)
+(*     O <> 0 -> *)
+(*     (m_global_time s2) > now + period -> *)
+(*     (m_global_time s1) = now -> *)
+(*     (exists tr, *)
+(*       In tr (m_ledger s2) /\ *)
+(*       tr_ctr_id tr = ctr_id /\ *)
+(*       tr_from tr = I /\ *)
+(*       tr_to tr = O /\ *)
+(*       tr_amount tr = sc * 11). *)
+(* Proof. *)
+(*   intros. *)
+(*   induction H. *)
+(*   - subst s2. omega. *)
+(*   - assert (Ss := H). assert (S := H7). *)
+(*     eapply steps_effect_over_contract in H; eauto. *)
+(*     eapply steps_preserves_consistent_state in Ss; eauto. *)
+(*     destruct H as [H | [H | H]]. *)
+(*     + eapply zcb_step_I_to_O' in S; eauto. *)
+(*     + rewrite H1 in H. simpl in H. *)
+(*       eapply IHsteps in H. *)
+(*       * destruct H as [tr [H H']]. *)
+(*         exists tr. split; trivial. *)
+(*         eapply step_does_not_remove_transactions; eauto. *)
+(*       * induction H7; subst s2. *)
+(*         ** find_contradiction H2. *)
+(*         ** ctr_case_analysis ctr ctr0. simpl in H5. trivial. *)
+(*         ** ctr_case_analysis ctr ctr0. simpl in H5. trivial. *)
+(*         ** ctr_case_analysis ctr ctr0. simpl in H5. trivial. *)
+(*         ** ctr_case_analysis ctr ctr0. simpl in H5. trivial. *)
+(*         ** simpl in *. f *)

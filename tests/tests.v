@@ -10,7 +10,6 @@ Definition default_ctr_id := 0.
 Definition default_desc_id := 0.
 Definition default_ledger : list Transaction := [].
 Definition default_gateway : list Gateway := [].
-Print Gateway.
 Definition g1 : Gateway := (gateway 1000 0 100).
 Definition g2 : Gateway := (gateway 1001 1 1000).
 Definition emptybal : Address -> Currency -> Z :=
