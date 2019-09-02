@@ -97,7 +97,17 @@ Definition T8_complex_scale_obs (g g' : Gateway) :=
             )
          )
   ).
+Definition T9_timebound (g : Gateway) (t0 t1 : nat) :=
+  (Timebound t0 t1
+             (ScaleObs (gtw_addr g)
+                       (Give (Or
+                                (Scale 5 (One USD))
+                                (Scale 10 (One EUR))
+                             )
+                       )
 
+             )
+  ).
 
 
 Eval compute in default_exec T1_one.
@@ -270,6 +280,7 @@ Eval compute in
      end
     ).
 
+
 Eval compute in (default_exec_gtw (T8_complex_scale_obs g1 g2) [g1; g2]).
 Eval compute in
     (match (default_exec_gtw  (T8_complex_scale_obs g1 g2) [g1; g2]) with
@@ -331,6 +342,74 @@ Eval compute in
     ).
 Eval compute in
     (match (default_exec_gtw  (T8_complex_scale_obs g2 g1) [g1; g2]) with
+     | None => 0%Z
+     | Some res => match res with
+                     result bal _ _ _ => bal Alice EUR
+                   end
+     end
+    ).
+
+
+
+Eval compute in (default_exec_gtw (T9_timebound g1 0 10) [g1; g2]).
+Eval compute in
+    (match (default_exec_gtw (T9_timebound g1 0 10) [g1; g2]) with
+     | None => 0%Z
+     | Some res => match res with
+                     result bal _ _ _ => bal Bob EUR
+                   end
+     end
+    ).
+Eval compute in
+    (match (default_exec_gtw (T9_timebound g1 0 10) [g1; g2]) with
+     | None => 0%Z
+     | Some res => match res with
+                     result bal _ _ _ => bal Alice EUR
+                   end
+     end
+    ).
+Eval compute in
+    (match (default_exec_gtw (T9_timebound g1 0 10) [g1; g2]) with
+     | None => 0%Z
+     | Some res => match res with
+                     result bal _ _ _ => bal Bob EUR
+                   end
+     end
+    ).
+Eval compute in
+    (match (default_exec_gtw (T9_timebound g1 0 10) [g1; g2]) with
+     | None => 0%Z
+     | Some res => match res with
+                     result bal _ _ _ => bal Alice EUR
+                   end
+     end
+    ).
+Eval compute in
+    (match (default_exec_gtw (T9_timebound g2 0 10) [g1; g2]) with
+     | None => 0%Z
+     | Some res => match res with
+                     result bal _ _ _ => bal Bob EUR
+                   end
+     end
+    ).
+Eval compute in
+    (match (default_exec_gtw (T9_timebound g1 0 10) [g1; g2]) with
+     | None => 0%Z
+     | Some res => match res with
+                     result bal _ _ _ => bal Alice EUR
+                   end
+     end
+    ).
+Eval compute in
+    (match (default_exec_gtw (T9_timebound g1 0 10) [g1; g2]) with
+     | None => 0%Z
+     | Some res => match res with
+                     result bal _ _ _ => bal Bob EUR
+                   end
+     end
+    ).
+Eval compute in
+    (match (default_exec_gtw (T9_timebound g1 0 10) [g1; g2]) with
      | None => 0%Z
      | Some res => match res with
                      result bal _ _ _ => bal Alice EUR
