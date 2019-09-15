@@ -20,9 +20,7 @@ Lemma frce_execute_I_to_O :
       tr_amount tr = sc * 10 /\
       tr_timestamp tr = time.
 Proof.
-  intros.
-  unfold frce_desc in H. simpl in H.
-  inversion H. clear H.
+  intros. unfold frce_desc in H. simp_inv_clear H.
   eexists. simpl.
   split.
   - left. trivial.
@@ -43,8 +41,7 @@ Lemma frce_execute_O_to_I :
       tr_timestamp tr = time.
 Proof.
   intros.
-  unfold frce_desc in H. simpl in H.
-  inversion H. clear H.
+  unfold frce_desc in H. simp_inv_clear H.
   eexists. simpl.
   split.
   - right. left. trivial.
