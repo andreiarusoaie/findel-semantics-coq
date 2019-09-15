@@ -1,6 +1,9 @@
 Load findel.
 
 (* Handy tactics *)
+Ltac simp_inv_clear H :=
+  simpl H; inversion H; clear H.
+
 Ltac case_match H :=
   let H' := fresh "H" in
   match goal with
