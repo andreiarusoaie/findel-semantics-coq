@@ -1,18 +1,18 @@
 Load metaproperties.
 
-(* ERCE : External currency exchange *)
-Definition erce_desc (addr : Address) (sc : nat) :=
+(* ERCE : External rate currency exchange *)
+Definition erce_desc (addr : Address) :=
   (And
-     (Give (Scale sc (One EUR)))
-     (ScaleObs addr (Scale sc (One USD)))
+     (Give (One EUR))
+     (ScaleObs addr (One USD))
   ).
 
-(* The issuer pays the owner *)
+(* The owner's rights *)
 Lemma erce_step_I_to_O:
-  forall s1 s2 ctr_id dsc_id addr sc amount I O ctr,
+  forall s1 s2 ctr_id dsc_id addr I O ctr sc,
     step s1 s2 ->
     consistent_state s1 ->
-    ctr = finctr ctr_id dsc_id (erce_desc addr amount) I O O sc ->
+    ctr = finctr ctr_id dsc_id (erce_desc addr) I O O sc ->
     In ctr (m_contracts s1) ->
     In (Executed ctr_id) (m_events s2) ->
     O <> 0 ->
@@ -21,11 +21,13 @@ Lemma erce_step_I_to_O:
       tr_ctr_id tr = ctr_id /\
       tr_from tr = I /\
       tr_to tr = O /\
-      tr_amount tr = sc * obs * amount).
+      tr_amount tr = sc * obs /\
+      tr_currency tr = USD).
 Proof.
   intros.
   induction H.
-  - subst s2. simpl in H3. destruct H3 as [H3 | H3]; try inversion H3.
+  - subst s2.
+    simpl in H3. destruct H3 as [H3 | H3]; try inversion H3.
     find_contradiction H0.
   - ctr_case_analysis ctr ctr0.
     unfold exec_ctr_in_state_with_owner in H10.
@@ -34,7 +36,8 @@ Proof.
     case_eq (query (m_gateway s1) addr (m_global_time s1)); intros;
       rewrite H10 in H1; inversion H1.
     inversion H1. clear H1. simpl.
-    eexists. eexists. split. left. trivial.
+    eexists. eexists.
+    split. left. eauto.
     simpl. repeat split; eauto.
     resolve_owner H5.
   - ctr_case_analysis ctr ctr0. rewrite H1 in H7.
@@ -48,12 +51,12 @@ Proof.
   - subst s2. simpl in *. find_contradiction H0.
 Qed.
 
-
-Lemma erce_steps_I_to_O:
-  forall s1 s2 ctr_id dsc_id addr sc amount I O ctr,
+(* If the owner joins, then the owner receives obs * sc USD from the owner *)
+Theorem erce_steps_I_to_O:
+  forall s1 s2 ctr_id dsc_id addr sc I O ctr,
     steps s1 s2 ->
     consistent_state s1 ->
-    ctr = finctr ctr_id dsc_id (erce_desc addr amount) I O O sc ->
+    ctr = finctr ctr_id dsc_id (erce_desc addr) I O O sc ->
     In ctr (m_contracts s1) ->
     In (Executed ctr_id) (m_events s2) ->
     O <> 0 ->
@@ -62,7 +65,8 @@ Lemma erce_steps_I_to_O:
       tr_ctr_id tr = ctr_id /\
       tr_from tr = I /\
       tr_to tr = O /\
-      tr_amount tr = sc * obs * amount).
+      tr_amount tr = sc * obs /\
+      tr_currency tr = USD).
 Proof.
   intros.
   induction H.
@@ -83,14 +87,15 @@ Proof.
       eapply step_does_not_remove_events; eauto.
 Qed.
 
+Print erce_steps_I_to_O.
 
 
-(* The owner pays the issuer *)
+(* The issuer's rights *)
 Lemma erce_step_O_to_I:
-  forall s1 s2 ctr_id dsc_id addr sc amount I O ctr,
+  forall s1 s2 ctr_id dsc_id addr sc I O ctr,
     step s1 s2 ->
     consistent_state s1 ->
-    ctr = finctr ctr_id dsc_id (erce_desc addr amount) I O O sc ->
+    ctr = finctr ctr_id dsc_id (erce_desc addr) I O O sc ->
     In ctr (m_contracts s1) ->
     In (Executed ctr_id) (m_events s2) ->
     O <> 0 ->
@@ -99,7 +104,8 @@ Lemma erce_step_O_to_I:
       tr_ctr_id tr = ctr_id /\
       tr_from tr = O /\
       tr_to tr = I /\
-      tr_amount tr = sc * amount).
+      tr_amount tr = sc /\
+      tr_currency tr = EUR).
 Proof.
   intros.
   induction H.
@@ -127,11 +133,11 @@ Proof.
 Qed.
 
 
-Lemma erce_steps_O_to_I:
-  forall s1 s2 ctr_id dsc_id addr sc amount I O ctr,
+Theorem erce_steps_O_to_I:
+  forall s1 s2 ctr_id dsc_id addr sc I O ctr,
     steps s1 s2 ->
     consistent_state s1 ->
-    ctr = finctr ctr_id dsc_id (erce_desc addr amount) I O O sc ->
+    ctr = finctr ctr_id dsc_id (erce_desc addr) I O O sc ->
     In ctr (m_contracts s1) ->
     In (Executed ctr_id) (m_events s2) ->
     O <> 0 ->
@@ -140,7 +146,8 @@ Lemma erce_steps_O_to_I:
       tr_ctr_id tr = ctr_id /\
       tr_from tr = O /\
       tr_to tr = I /\
-      tr_amount tr = sc * amount).
+      tr_amount tr = sc /\
+      tr_currency tr = EUR).
 Proof.
   intros.
   induction H.
@@ -161,15 +168,17 @@ Proof.
       eapply step_does_not_remove_events; eauto.
 Qed.
 
+Print erce_steps_O_to_I.
 
-(* Invalid gateway section *)
 
-(* Invalid gateway implies no changes in the ledger *)
+(* Invalid gateway! *)
+
+(* Invalid gateway implies no changes in the ledger! *)
 Theorem erce_invalid_gateway:
-  forall s1 s2 ctr_id dsc_id addr sc amount I O ctr,
+  forall s1 s2 ctr_id dsc_id addr sc I O ctr,
     step s1 s2 ->
     consistent_state s1 ->
-    ctr = finctr ctr_id dsc_id (erce_desc addr amount) I O O sc ->
+    ctr = finctr ctr_id dsc_id (erce_desc addr) I O O sc ->
     In ctr (m_contracts s1) ->
     O <> 0 ->
     query (m_gateway s1) addr (m_global_time s1) = None ->
@@ -188,12 +197,14 @@ Proof.
     unfold erce_desc in H7. simpl in H7. inversion H7.
 Qed.
 
+Print erce_invalid_gateway.
 
+(* If contract gets deleted, then the ledger remains the same. *)
 Lemma erce_invalid_gtw_step:
-  forall s1 s2 ctr_id dsc_id addr sc amount I O ctr,
+  forall s1 s2 ctr_id dsc_id addr sc I O ctr,
     step s1 s2 ->
     consistent_state s1 ->
-    ctr = finctr ctr_id dsc_id (erce_desc addr amount) I O O sc ->
+    ctr = finctr ctr_id dsc_id (erce_desc addr) I O O sc ->
     In ctr (m_contracts s1) ->
     In (Deleted ctr_id) (m_events s2) ->
     O <> 0 ->
