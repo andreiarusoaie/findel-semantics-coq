@@ -10,18 +10,17 @@ Definition zcb_desc
   ).
 
 
-(* The owner pays the issuer *)
+(* The issuer's rights *)
 Lemma zcb_execute_O_to_I :
   forall sc now period I O bal time gtw ctr_id dsc_id next_id ledger result,
-    execute (zcb_desc now period)  sc I O bal time gtw ctr_id dsc_id next_id ledger =
+    execute (zcb_desc now period) sc I O bal time gtw ctr_id dsc_id next_id ledger =
     Some result ->
     exists tr,
       In tr (res_ledger result) /\
       tr_ctr_id tr = ctr_id /\
       tr_from tr = O /\
       tr_to tr = I /\
-      tr_amount tr = sc * 10 /\
-      tr_timestamp tr = time.
+      tr_amount tr = sc * 10.
 Proof.
   unfold zcb_desc. intros.
   simpl in H.
@@ -50,49 +49,41 @@ Lemma zcb_step_O_to_I :
       tr_ctr_id tr = ctr_id /\
       tr_from tr = O /\
       tr_to tr = I /\
-      tr_amount tr = sc * 10 /\
-      tr_timestamp tr = (m_global_time s1).
+      tr_amount tr = sc * 10.
 Proof.
   intros.
-  assert (S := H).
-  assert (C : ~ In (Executed (ctr_id ctr)) (m_events s1)).
-  apply consistent_impl_exec; auto.
   induction H.
-  - subst s2. simpl in *.
+  - subst s2. find_contradiction H2.
+    destruct H3 as [H3 | H3]; try inversion H3; try contradiction.
+  - ctr_case_analysis ctr ctr0.
+    subst ctr s2. simpl in *.
+    destruct H3 as [H3 | H3]; try contradiction.
+    unfold exec_ctr_in_state_with_owner in *.
+    simpl in H10. inversion H10.
+    case_analysis H11.
+    case_analysis H14.
+    + eexists. simpl. split.
+      * right. left. eauto.
+      * simpl. repeat split; trivial.
+        resolve_owner H5.
+    + eexists. simpl. split.
+      * left. eauto.
+      * simpl. repeat split; trivial.
+        resolve_owner H5.
+  - ctr_case_analysis ctr ctr0. subst ctr s2. simpl in H7.
+    unfold zcb_desc in H7. inversion H7.
+  - ctr_case_analysis ctr ctr0. subst ctr s2. simpl in H7.
+    unfold zcb_desc in H7. inversion H7.
+  - ctr_case_analysis ctr ctr0. subst ctr s2.
+    simpl in H3.
     destruct H3 as [H3 | H3]; try inversion H3.
-    subst ctr.
-    contradiction.
-  - apply step_executes_only_one_contract
-      with (ctr := ctr) (ctr' := ctr0) in S; subst ctr; auto.
-    + subst ctr0 s2. simpl in *.
-      destruct H3 as [H3 | H3]; try contradiction.
-      unfold exec_ctr_in_state_with_owner in H10.
-      apply zcb_execute_O_to_I in H10.
-      destruct H10 as [tr H10].
-      exists tr. simpl in H10.
-      unfold can_join in H5.
-      simpl in H5.
-      destruct H5 as [H5 | H5]; auto.
-      ++ subst owner. auto.
-      ++ contradiction.
-    + subst s2. simpl in *. left. trivial.
-  - apply step_executes_only_one_contract
-      with (ctr := ctr) (ctr' := ctr0) in S; subst ctr; auto.
-    + subst ctr0. simpl in *. unfold zcb_desc in H7. inversion H7.
-    + subst s2. simpl in *. left. trivial.
-  - apply step_executes_only_one_contract
-      with (ctr := ctr) (ctr' := ctr0) in S; subst ctr; auto.
-    + subst ctr0. simpl in *. unfold zcb_desc in H7. inversion H7.
-    + subst s2. simpl in *. left. trivial.
-  - apply step_executes_only_one_contract
-      with (ctr := ctr) (ctr' := ctr0) in S; subst ctr; auto;
-      subst s2; simpl in *;
-        destruct H3 as [H3 | H3]; try inversion H3; try contradiction.
-  - subst s2. simpl in *. subst ctr. contradiction.
+    find_contradiction H2.
+  - subst. simpl in *. find_contradiction H2.
 Qed.
 
 
-Lemma zcb_steps_O_to_I :
+(* If the owner joins, the issuer receives sc * 10 USD from the owner *)
+Theorem zcb_steps_O_to_I :
   forall s1 s2 ctr_id dsc_id now period I O sc ctr,
     steps s1 s2 ->
     consistent_state s1 ->
@@ -100,30 +91,25 @@ Lemma zcb_steps_O_to_I :
     In ctr (m_contracts s1) ->
     In (Executed ctr_id) (m_events s2) ->
     O <> 0 ->
-    exists time tr,
+    exists tr,
       In tr (m_ledger s2) /\
       tr_ctr_id tr = ctr_id /\
       tr_from tr = O /\
       tr_to tr = I /\
-      tr_amount tr = sc * 10 /\
-      tr_timestamp tr = time.
+      tr_amount tr = sc * 10.
 Proof.
   intros.
-  assert (C : ~ In (Executed (ctr_id ctr)) (m_events s1)).
-  apply consistent_impl_exec; auto.
-  rewrite H1 in C. simpl in C.
   induction H.
-  - subst. contradiction.
-  - assert (H' := H).
+  - subst. find_contradiction H2.
+  - assert (H' := H). assert (H'' := H).
     apply steps_preserves_consistent_state in H'; auto.
     apply steps_effect_over_contract with (ctr := ctr) in H; trivial.
     destruct H as [H|[H|H]]; trivial.
-    + eexists.
-      eapply zcb_step_O_to_I; eauto.
+    + eapply zcb_step_O_to_I; eauto.
     + subst ctr. simpl in *.
       apply IHsteps in H.
-      destruct H as [time [tr [H HT]]].
-      exists time, tr.
+      destruct H as [tr [H HT]].
+      exists tr.
       split; trivial.
       eapply step_does_not_remove_transactions; eauto.
     + eapply step_preserves_consistent_state in H'; eauto.
@@ -135,8 +121,13 @@ Proof.
       split; eauto.
 Qed.
 
+Print zcb_steps_O_to_I.
 
-(* The owner's rights: either paid or can trigger payment. *)
+
+(* The owner's rights:
+1. If  current time < now + period -> the owner can trigger payment later.
+2. If current time  = now + period and the owner triggers -> the owner gets paid.
+*)
 
 (* Failed attempt: cannot prove that the owner always gets paid! *)
 Lemma zcb_execute_I_to_O :
