@@ -70,7 +70,7 @@ Proof.
 Qed.
 
 (* If the owner joins, then the owner receives sc * n * 10 EUR from the issuer *)
-Theorem frce_steps_I_to_O:
+Proposition frce_steps_I_to_O:
   forall s1 s2 ctr ctr_id dsc_id I O sc,
     steps s1 s2 ->
     consistent_state s1 ->
@@ -173,7 +173,7 @@ Proof.
 Qed.
 
 (* If the owner joins, then the issuer receives sc * n * 11 USD from the owner *)
-Theorem frce_steps_O_to_I:
+Proposition frce_steps_O_to_I:
   forall s1 s2 ctr ctr_id dsc_id I O sc,
     steps s1 s2 ->
     consistent_state s1 ->

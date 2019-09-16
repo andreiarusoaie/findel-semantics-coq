@@ -52,7 +52,7 @@ Proof.
 Qed.
 
 (* If the owner joins, then the owner receives r * sc USD from the owner *)
-Theorem erce_steps_I_to_O:
+Proposition erce_steps_I_to_O:
   forall s1 s2 ctr_id dsc_id addr sc I O ctr,
     steps s1 s2 ->
     consistent_state s1 ->
@@ -133,7 +133,7 @@ Proof.
 Qed.
 
 
-Theorem erce_steps_O_to_I:
+Proposition erce_steps_O_to_I:
   forall s1 s2 ctr_id dsc_id addr sc I O ctr,
     steps s1 s2 ->
     consistent_state s1 ->
@@ -174,7 +174,7 @@ Print erce_steps_O_to_I.
 (* Invalid gateway! *)
 
 (* Invalid gateway implies no changes in the ledger! *)
-Theorem erce_invalid_gateway:
+Proposition erce_invalid_gateway:
   forall s1 s2 ctr_id dsc_id addr sc I O ctr,
     step s1 s2 ->
     consistent_state s1 ->
@@ -200,7 +200,7 @@ Qed.
 Print erce_invalid_gateway.
 
 (* If contract gets deleted, then the ledger remains the same. *)
-Lemma erce_invalid_gtw_step:
+Proposition erce_invalid_gtw_step:
   forall s1 s2 ctr_id dsc_id addr sc I O ctr,
     step s1 s2 ->
     consistent_state s1 ->
@@ -227,3 +227,5 @@ Proof.
   - ctr_case_analysis ctr ctr0. subst s2. simpl. trivial.
   - subst s2. simpl in *. find_contradiction H0.
 Qed.
+
+Print erce_invalid_gtw_step.
