@@ -16,12 +16,12 @@ Lemma erce_step_I_to_O:
     In ctr (m_contracts s1) ->
     In (Executed ctr_id) (m_events s2) ->
     O <> 0 ->
-    (exists obs tr,
+    (exists r tr,
       In tr (m_ledger s2) /\
       tr_ctr_id tr = ctr_id /\
       tr_from tr = I /\
       tr_to tr = O /\
-      tr_amount tr = sc * obs /\
+      tr_amount tr = sc * r /\
       tr_currency tr = USD).
 Proof.
   intros.
@@ -51,7 +51,7 @@ Proof.
   - subst s2. simpl in *. find_contradiction H0.
 Qed.
 
-(* If the owner joins, then the owner receives obs * sc USD from the owner *)
+(* If the owner joins, then the owner receives r * sc USD from the owner *)
 Theorem erce_steps_I_to_O:
   forall s1 s2 ctr_id dsc_id addr sc I O ctr,
     steps s1 s2 ->
@@ -60,12 +60,12 @@ Theorem erce_steps_I_to_O:
     In ctr (m_contracts s1) ->
     In (Executed ctr_id) (m_events s2) ->
     O <> 0 ->
-    (exists obs tr,
+    (exists r tr,
       In tr (m_ledger s2) /\
       tr_ctr_id tr = ctr_id /\
       tr_from tr = I /\
       tr_to tr = O /\
-      tr_amount tr = sc * obs /\
+      tr_amount tr = sc * r /\
       tr_currency tr = USD).
 Proof.
   intros.
@@ -77,8 +77,8 @@ Proof.
     destruct H as [H | [H | H]]; trivial.
     + eapply erce_step_I_to_O; eauto.
     + subst ctr. simpl in *. eapply IHsteps in H.
-      destruct H as [obs [tr [H H'']]].
-      exists obs, tr. split; trivial.
+      destruct H as [r [tr [H H'']]].
+      exists r, tr. split; trivial.
       eapply step_does_not_remove_transactions; eauto.
     + eapply step_preserves_consistent_state in H'; eauto.
       destruct H' as [_ [_ [_ [_ H']]]].
