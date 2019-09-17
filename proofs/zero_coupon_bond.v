@@ -136,13 +136,14 @@ Lemma zcb_step_I_to_O :
     In ctr (m_contracts s1) ->
     In (Executed ctr_id) (m_events s2) ->
     O <> 0 ->
-    (m_global_time s1) < now + period - Δ ->
-    exists ctr,
-      In ctr (m_contracts s2) /\
-      ctr_primitive ctr = (At (now + period) (Scale 11 (One USD))) /\
-      ctr_issuer ctr = I /\
-      ctr_proposed_owner ctr = O /\
-      ctr_scale ctr = sc.
+    (m_global_time s1) > now + period - Δ ->
+    (m_global_time s2) > now + period + Δ ->
+    exists tr,
+      In tr (m_ledger s2) /\
+      tr_ctr_id tr = ctr_id /\
+      tr_from tr = I /\
+      tr_to tr = O /\
+      tr_amount tr = sc * 11.
 Proof.
   intros.
   induction H.
@@ -150,21 +151,21 @@ Proof.
     destruct H3 as [H3 | H3]; try inversion H3; try contradiction.
   - ctr_case_analysis ctr ctr0.
     subst ctr s2. simpl in *.
-    destruct H3 as [H3 | H3]; try contradiction.
-    + unfold exec_ctr_in_state_with_owner in *.
-      simpl in H11. inversion H11.
-      case_analysis H12.
-      case_analysis H15.
-      * apply ltb_sound_true in H12.
+    destruct H3 as [H3 | H3]; try contradiction. clear H3.
+    + unfold exec_ctr_in_state_with_owner in H12.
+      simpl in H12. inversion H12. clear H12.
+      case_analysis H3.
+      case_analysis H13.
+      * simpl. eexists. split.
+        ** left. eauto.
+        ** repeat split; trivial. simpl. resolve_owner H7.
+      * apply ltb_sound_false in H3.
         apply ltb_sound_false in H1.
-        omega.
-      * eexists. split; simpl.
-        ** rewrite in_app_iff. right. simpl. left. eauto.
-        ** repeat split; trivial. resolve_owner H6.
-  - ctr_case_analysis ctr ctr0. subst ctr s2. simpl in H8.
-    unfold zcb_desc in H8. inversion H8.
-  - ctr_case_analysis ctr ctr0. subst ctr s2. simpl in H8.
-    unfold zcb_desc in H8. inversion H8.
+        contradict H3. omega.
+  - ctr_case_analysis ctr ctr0. subst ctr s2. simpl in H9.
+    unfold zcb_desc in H9. inversion H9.
+  - ctr_case_analysis ctr ctr0. subst ctr s2. simpl in H9.
+    unfold zcb_desc in H9. inversion H9.
   - ctr_case_analysis ctr ctr0. subst ctr s2.
     simpl in H3.
     destruct H3 as [H3 | H3]; try inversion H3.
@@ -196,7 +197,7 @@ Proof.
     subst ctr s2. simpl in *.
     destruct H3 as [H3 | H3]; try contradiction.
     + unfold exec_ctr_in_state_with_owner in *.
-      simpl in H11. inversion H11.
+      simpl in H12. inversion H12.
       case_analysis H12.
       case_analysis H15.
       * apply ltb_sound_true in H12.
@@ -254,7 +255,7 @@ Proof.
          ** ctr_case_analysis ctr ctr0.
             destruct ctr. simpl in *.
             rewrite A in H13.
-            clear H14 H12 H10 H9 IHsteps H11 H3 H4 H1 H8 H2 H A HT.
+            clear H14 H12 H10 H9 IHsteps H12 H3 H4 H1 H8 H2 H A HT.
             unfold exec_ctr_in_state_with_owner in H13. simpl in *.
             case_if H13.
             case_if H17.
@@ -306,7 +307,7 @@ Proof.
     clear H10 H3.
     
     + apply ltb_sound_true in H9.
-      apply ltb_sound_false in H11.
+      apply ltb_sound_false in H12.
       try omega.
     + simpl. subst.
       clear H2 H5 H0.
