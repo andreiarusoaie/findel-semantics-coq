@@ -78,10 +78,11 @@ Ltac destruct_join_gen H :=
   let Ss2 := fresh "Ss" in
   let St := fresh "St" in
   let E := fresh "E" in
+  let D := fresh "D" in
   let G := fresh "G" in
   let N := fresh "J" in
-  destruct H as [s [s' [Ss1 [Ss2 [E [G J]]]]]];
-  destruct_executed E; destruct_generates G.
+  destruct H as [s [s' [Ss1 [Ss2 [[E | D] [G J]]]]]];
+  try destruct_executed E; try destruct_generates G.
 
 Ltac inversion_event Ev :=
   destruct Ev as [Ev | Ev]; try inversion Ev; try contradiction.
@@ -137,8 +138,9 @@ Definition joins_generated
            (ctr gen_ctr : FinContract)
            (s1 s2 : State)
            (t_first t_second : Time) :=
-  exists s s', steps s1 s /\ steps s' s2 /\ executed ctr s s' t_first /\
-                       generates ctr gen_ctr s O /\ joins O gen_ctr s' s2 t_second.
+  exists s s', steps s1 s /\ steps s' s2 /\
+               (executed ctr s s' t_first \/ deleted ctr s s' t_first) /\
+               generates ctr gen_ctr s O /\ joins O gen_ctr s' s2 t_second.
 
 
 Definition consistent_state (s : State) :=
