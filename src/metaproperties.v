@@ -73,13 +73,14 @@ Ltac destruct_join_gen H :=
   let s := fresh "s" in
   let s' := fresh "s'" in
   let ctr := fresh "ctr" in
+  let genctr := fresh "g_ctr" in
   let Ss1 := fresh "Ss" in
   let Ss2 := fresh "Ss" in
   let St := fresh "St" in
   let E := fresh "E" in
   let G := fresh "G" in
   let N := fresh "J" in
-  destruct H as [s [s' [ctr [Ss1 [Ss2 [E [G J]]]]]]];
+  destruct H as [s [s' [Ss1 [Ss2 [E [G J]]]]]];
   destruct_executed E; destruct_generates G.
 
 Ltac inversion_event Ev :=
@@ -133,11 +134,11 @@ Definition generates
 
 Definition joins_generated
            (O : Address)
-           (ctr : FinContract)
+           (ctr gen_ctr : FinContract)
            (s1 s2 : State)
            (t_first t_second : Time) :=
-  exists s s' new_ctr, steps s1 s /\ steps s' s2 /\ executed ctr s s' t_first /\
-                       generates ctr new_ctr s O /\ joins O new_ctr s' s2 t_second.
+  exists s s', steps s1 s /\ steps s' s2 /\ executed ctr s s' t_first /\
+                       generates ctr gen_ctr s O /\ joins O gen_ctr s' s2 t_second.
 
 
 Definition consistent_state (s : State) :=
