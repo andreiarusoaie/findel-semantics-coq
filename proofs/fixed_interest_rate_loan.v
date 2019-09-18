@@ -18,6 +18,7 @@ Lemma firl_I_to_O_helper:
     O <> 0 ->
     exists tr,
       In tr (m_ledger s2) /\
+      tr_ctr_id tr = ctr_id /\
       tr_from tr = I /\
       tr_to tr = O /\
       tr_amount tr = sc * 2.
@@ -62,10 +63,12 @@ Lemma firl_I_to_O :
     consistent_state s1 ->
     ctr = finctr c_id dsc_id (firl_description t period) I O O sc ->
     joins_generated O ctr gen_ctr s1 s2 t T ->
+    (ctr_primitive gen_ctr) = After (t + period) (Scale 2 (One USD)) ->
     T > t + period ->
     O <> 0 ->
     exists tr,
       In tr (m_ledger s2) /\
+      tr_ctr_id tr = (ctr_id gen_ctr) /\
       tr_from tr = I /\
       tr_to tr = O /\
       tr_amount tr = sc * 2.
@@ -77,37 +80,54 @@ Proof.
     induction St; subst s'.
     + inversion_event Ev. find_contradiction M.
     + ctr_case_analysis ctr ctr0.
-      execute_own ctr H11.
-      case_analysis H11.
-      case_analysis H14.
-      * case_analysis H15.
-        case_analysis H16; simpl in *.
-        ** eexists. split.
-           eapply steps_does_not_remove_transactions; eauto.
-           rewrite <- H20. simpl. left. eauto.
-           repeat split; trivial.
-           *** simpl. 
-           resolve_owner H6.
-        ** rewrite <- T0 in *.
-          eapply firl_I_to_O_helper in J; eauto.
-           simpl in Exec. rewrite H0, H11, H14, H13 in Exec.
-           inversion Exec. subst res.
-           simpl in M0.
-           destruct M0 as [M0 | [M0 | _]]; try contradiction.
-           *** rewrite <- M0. instantiate (2 := S (m_fresh_id s)). instantiate (2 := dsc_id0)).
-           *** destruct_join J.
-    + not_or ctr ctr0 H6.
-    + not_or ctr ctr0 H6.
+      execute_own ctr H12.
+      case_analysis H12.
+      case_analysis H15.
+      * case_analysis H16.
+        case_analysis H17; simpl in *;
+          rewrite H0, H12, H14, H15 in Exec; inversion Exec; clear Exec;
+            rewrite <- H17 in M0; simpl in M0.
+        ** destruct M0 as [M0 | M0]; try contradiction.
+           rewrite <- M0 in H2. simpl in H2. inversion H2.
+        ** destruct M0 as [M0 | [M0 | M0]]; try contradiction.
+           *** rewrite <- M0 in H2. simpl in H2. inversion H2.
+           *** rewrite <- M0 in H2. simpl in H2. inversion H2.
+      * case_analysis H16.
+        case_analysis H17; simpl in *;
+          rewrite H0, H12, H14, H15 in Exec; inversion Exec; clear Exec;
+            rewrite <- H17 in M0; simpl in M0.
+        ** destruct M0 as [M0 | M0]; try contradiction.
+           rewrite <- M0 in H2. simpl in H2. inversion H2.
+        ** destruct M0 as [M0 | [M0 | M0]]; try contradiction.
+           *** rewrite <- M0 in H2. simpl in H2. inversion H2.
+           *** rewrite <- M0 in H2. simpl in H2. inversion H2.
+    + not_or ctr ctr0 H9.
+    + not_or ctr ctr0 H9.
     + ctr_case_analysis ctr ctr0. inversion_event Ev. find_contradiction M.
     + find_contradiction M.
-  - induction St; subst s'.
-    + inversion_event Ev. find_contradiction M.
-    + admit. 
-    + not_or ctr ctr0 H6.
-    + not_or ctr ctr0 H6.
-    + ctr_case_analysis ctr ctr0. inversion_event Ev. find_contradiction M.
-    + find_contradiction M.
-  - 
+  - insert_consistent s Ss.
+    destruct_deleted D.
+    insert_consistent s' St.
+    induction St; subst s'.
+    + inversion_event Ev. find_contradiction_del M.
+    + inversion_event Ev. find_contradiction_del M.
+    + not_or ctr ctr0 H9.
+    + not_or ctr ctr0 H9.
+    + ctr_case_analysis ctr ctr0.
+      execute_own ctr H10.
+      case_analysis H10.
+      * unfold firl_description in Exec. simpl in Exec.
+        rewrite H0 in Exec. inversion Exec.
+      * case_analysis H13.
+        ** case_analysis H14.
+           *** unfold firl_description in Exec. simpl in Exec.
+               rewrite H0, H10, H12 in Exec. inversion Exec.
+           *** case_analysis H15.
+        ** case_analysis H15.
+           *** unfold firl_description in Exec. simpl in Exec.
+               rewrite H0, H10, H12 in Exec. inversion Exec.
+           *** case_analysis H15.
+    + find_contradiction_del M.
 Qed.
 
 Lemma firl_generates_contracts :
@@ -275,7 +295,7 @@ Lemma firl_step_O_to_I' :
     In ctr (m_contracts s1) ->
     In (Executed ctr_id) (m_events s2) ->
     (m_global_time s2) >= t ->
-    t > 0 -> 
+    t > 0 ->
     O <> 0 ->
     (exists ctr,
         In ctr (m_contracts s2) /\
