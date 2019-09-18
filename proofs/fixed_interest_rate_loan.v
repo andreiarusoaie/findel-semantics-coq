@@ -1,12 +1,114 @@
 Load metaproperties.
 
 (* firl = fixed interest rate loan *)
-Definition firl_description (t : Time) :=
+Definition firl_description (t period : Time) :=
   (And
      (Before t (Or (Give (One USD)) (Give (One EUR))))
-     (After (t + 2) (Scale 2 (One EUR)))
+     (After (t + period) (Scale 2 (One EUR)))
   ).
 
+
+(* The owners rights *)
+Lemma firl_I_to_O_helper:
+  forall s1 s2 t T period I O sc ctr ctr_id dsc_id,
+    consistent_state s1 ->
+    ctr = finctr ctr_id dsc_id (After (t + period) (Scale 2 (One EUR))) I O O sc ->
+    joins O ctr s1 s2 T ->
+    T > t + period ->
+    O <> 0 ->
+    exists tr,
+      In tr (m_ledger s2) /\
+      tr_from tr = I /\
+      tr_to tr = O /\
+      tr_amount tr = sc * 2.
+Proof.
+  intros.
+  destruct_join H1.
+  - insert_consistent s Ss.
+    induction St; subst s'.
+    + inversion_event Ev. find_contradiction H.
+    + ctr_case_analysis ctr ctr0.
+      execute_own ctr H10.
+      case_if H10.
+      case_if H13.
+      * eexists. split.
+        ** eapply steps_does_not_remove_transactions; eauto.
+           simpl. subst ledger'. left. eauto.
+        ** repeat split; trivial. resolve_owner H5.
+      * simpl in *. rewrite <- T0 in *.
+        apply ltb_sound_false in H10. contradiction H10.
+    + not_or ctr ctr0 H7.
+    + not_or ctr ctr0 H7.
+    + inversion_event Ev. find_contradiction H.
+    + find_contradiction H.
+  - insert_consistent s Ss.
+    induction St; subst s'.
+    + inversion_event Ev. find_contradiction_del H.
+    + inversion_event Ev. find_contradiction_del H.
+    + not_or ctr ctr0 H7.
+    + not_or ctr ctr0 H7.
+    + ctr_case_analysis ctr ctr0.
+      execute_own ctr H8.
+      case_if H8.
+      * apply ltb_sound_true in H0.
+        apply Nat.lt_asymm in H0.
+        contradict H0. apply infinite.
+      * case_if H11.
+    + find_contradiction_del H.
+Qed.
+
+Lemma firl_I_to_O :
+  forall s1 s2 t T gen_ctr period I O sc ctr c_id dsc_id,
+    consistent_state s1 ->
+    ctr = finctr c_id dsc_id (firl_description t period) I O O sc ->
+    joins_generated O ctr gen_ctr s1 s2 t T ->
+    T > t + period ->
+    O <> 0 ->
+    exists tr,
+      In tr (m_ledger s2) /\
+      tr_from tr = I /\
+      tr_to tr = O /\
+      tr_amount tr = sc * 2.
+Proof.
+  intros.
+  destruct_join_gen H1.
+  - insert_consistent s Ss.
+    insert_consistent s' St.
+    induction St; subst s'.
+    + inversion_event Ev. find_contradiction M.
+    + ctr_case_analysis ctr ctr0.
+      execute_own ctr H11.
+      case_analysis H11.
+      case_analysis H14.
+      * case_analysis H15.
+        case_analysis H16; simpl in *.
+        ** eexists. split.
+           eapply steps_does_not_remove_transactions; eauto.
+           rewrite <- H20. simpl. left. eauto.
+           repeat split; trivial.
+           *** simpl. 
+           resolve_owner H6.
+        ** rewrite <- T0 in *.
+          eapply firl_I_to_O_helper in J; eauto.
+           simpl in Exec. rewrite H0, H11, H14, H13 in Exec.
+           inversion Exec. subst res.
+           simpl in M0.
+           destruct M0 as [M0 | [M0 | _]]; try contradiction.
+           *** rewrite <- M0. instantiate (2 := S (m_fresh_id s)). instantiate (2 := dsc_id0)).
+           *** destruct_join J.
+    + not_or ctr ctr0 H6.
+    + not_or ctr ctr0 H6.
+    + ctr_case_analysis ctr ctr0. inversion_event Ev. find_contradiction M.
+    + find_contradiction M.
+  - induction St; subst s'.
+    + inversion_event Ev. find_contradiction M.
+    + admit. 
+    + not_or ctr ctr0 H6.
+    + not_or ctr ctr0 H6.
+    + ctr_case_analysis ctr ctr0. inversion_event Ev. find_contradiction M.
+    + find_contradiction M.
+  - 
+Qed.
 
 Lemma firl_generates_contracts :
   forall t scale I O balance time gtw ctr_id dsc_id next_id ledger result,
