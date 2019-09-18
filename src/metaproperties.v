@@ -43,8 +43,102 @@ Ltac resolve_owner H :=
 Ltac ctr_case_analysis ctr ctr' :=
   case_eq (ctr_eq_dec ctr ctr'); intros; try contradiction; subst ctr'.
 
+Ltac destruct_executed H :=
+  let S := fresh "St" in
+  let M := fresh "M" in
+  let Ev := fresh "Ev" in
+  let T := fresh "T" in
+  destruct H as [S [M [Ev T]]].
+
+Ltac destruct_deleted := destruct_executed.
+
+Ltac destruct_join H :=
+  let s := fresh "s" in
+  let s' := fresh "s'" in
+  let Ss1 := fresh "Ss" in
+  let Ss2 := fresh "Ss" in
+  let E := fresh "E" in
+  let D := fresh "D" in
+  destruct H as [s [s' [Ss1 [Ss2 [E | D]]]]]; try destruct_executed E; try destruct_deleted D.
+
+
+Ltac destruct_generates H :=
+  let res := fresh "res" in
+  let Ex := fresh "Exec" in
+  let M := fresh "M" in
+  destruct H as [res [Ex M]].
+
+
+Ltac destruct_join_gen H :=
+  let s := fresh "s" in
+  let s' := fresh "s'" in
+  let ctr := fresh "ctr" in
+  let Ss1 := fresh "Ss" in
+  let Ss2 := fresh "Ss" in
+  let St := fresh "St" in
+  let E := fresh "E" in
+  let G := fresh "G" in
+  let N := fresh "J" in
+  destruct H as [s [s' [ctr [Ss1 [Ss2 [E [G J]]]]]]];
+  destruct_executed E; destruct_generates G.
+
+Ltac inversion_event Ev :=
+  destruct Ev as [Ev | Ev]; try inversion Ev; try contradiction.
+
+Ltac not_or c c' H :=
+  ctr_case_analysis c c'; subst c; simpl in H; inversion H.
+
+Ltac not_executed Cons In :=
+  destruct Cons as [_ [_ [_ [Cons _]]]];
+  apply Cons in In; destruct In as [In _];
+  contradiction.
+
+Ltac execute_own ctr H :=
+  subst ctr; unfold exec_ctr_in_state_with_owner in H; simpl in H.
 
 (* Misc *)
+Definition executed
+           (ctr : FinContract)
+           (s s' : State)
+           (at_ : Time) :=
+    step s s' /\
+    In ctr (m_contracts s) /\
+    In (Executed (ctr_id ctr)) (m_events s') /\
+    at_ = m_global_time s.
+
+Definition deleted
+           (ctr : FinContract)
+           (s s' : State)
+           (at_ : Time) :=
+    step s s' /\
+    In ctr (m_contracts s) /\
+    In (Deleted (ctr_id ctr)) (m_events s') /\
+    at_ = m_global_time s.
+
+Definition joins
+           (O : Address)
+           (ctr : FinContract)
+           (s1 s2 : State)
+           (at_ : Time) :=
+  exists s s', steps s1 s /\ steps s' s2 /\ (executed ctr s s' at_ \/ deleted ctr s s' at_).
+
+
+Definition generates
+           (ctr new_ctr : FinContract) (s : State) (O : Address) :=
+  exists result,
+    execute (ctr_primitive ctr) (ctr_scale ctr) (ctr_issuer ctr) O
+            (m_balance s) (m_global_time s) (m_gateway s) (ctr_id ctr)
+            (ctr_desc_id ctr) (m_fresh_id s) (m_ledger s) = Some result /\
+    In new_ctr (res_contracts result).
+
+Definition joins_generated
+           (O : Address)
+           (ctr : FinContract)
+           (s1 s2 : State)
+           (t_first t_second : Time) :=
+  exists s s' new_ctr, steps s1 s /\ steps s' s2 /\ executed ctr s s' t_first /\
+                       generates ctr new_ctr s O /\ joins O new_ctr s' s2 t_second.
+
 
 Definition consistent_state (s : State) :=
   (forall ctr, In ctr (m_contracts s) -> m_fresh_id s > ctr_id ctr) /\
@@ -67,9 +161,27 @@ Proof.
   trivial.
 Qed.
 
+Lemma consistent_impl_del:
+  forall s ctr,
+    consistent_state s ->
+    In ctr (m_contracts s) ->
+    ~ In (Deleted (ctr_id ctr)) (m_events s).
+Proof.
+  intros.
+  destruct H as [_ [_ [_ [H _]]]].
+  apply H in H0.
+  destruct H0 as [_ H0].
+  trivial.
+Qed.
+
 Ltac find_contradiction H :=
   match goal with
   | H : In ?ctr _ |- _ =>  apply consistent_impl_exec in H; auto; subst; simpl in *; try contradiction
+  end.
+
+Ltac find_contradiction_del H :=
+  match goal with
+  | H : In ?ctr _ |- _ =>  apply consistent_impl_del in H; auto; subst; simpl in *; try contradiction
   end.
 
 
@@ -656,6 +768,18 @@ Proof.
 Qed.
 
 
+Ltac insert_consistent s H :=
+  let H' := fresh "H" in
+  match goal with
+  | H : steps _ s |- _ => 
+    assert (H' : consistent_state s);
+    try eapply steps_preserves_consistent_state; eauto
+  | H : step _ s |- _ =>
+    assert (H' : consistent_state s);
+    try eapply step_preserves_consistent_state;eauto
+  end.
+
+
 Theorem events_consistent_step:
   forall s s' e,
     step s s' ->
@@ -922,6 +1046,19 @@ Proof.
   revert e.
   induction H; intros; subst s'; simpl; try right; trivial.
 Qed.
+
+
+Theorem steps_does_not_remove_events:
+  forall s s' e,
+    steps s s' ->
+    In e (m_events s) ->
+    In e (m_events s').
+Proof.
+  intros.
+  induction H; subst; auto.
+  eapply step_does_not_remove_events; eauto.
+Qed.
+
 
 Theorem time_passes_one_step_at_a_time:
 forall s s' n,

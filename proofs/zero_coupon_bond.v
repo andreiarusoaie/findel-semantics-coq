@@ -9,39 +9,13 @@ Definition zcb_desc
      (At (NOW + PERIOD) (Scale 11 (One USD)))
   ).
 
+
 (* The issuer's rights *)
-Lemma zcb_execute_O_to_I :
-  forall sc now period I O bal time gtw ctr_id dsc_id next_id ledger result,
-    execute (zcb_desc now period) sc I O bal time gtw ctr_id dsc_id next_id ledger =
-    Some result ->
-    exists tr,
-      In tr (res_ledger result) /\
-      tr_ctr_id tr = ctr_id /\
-      tr_from tr = O /\
-      tr_to tr = I /\
-      tr_amount tr = sc * 10.
-Proof.
-  unfold zcb_desc. intros.
-  simpl in H.
-  case_analysis H.
-  case_analysis H2; simpl in *.
-  - eexists.
-    split.
-    + right. left. trivial.
-    + repeat split; trivial.
-  - eexists.
-    split.
-    + left. trivial.
-    + repeat split; trivial.
-Qed.
-
-Lemma zcb_step_O_to_I :
+Proposition zcb_O_to_I:
   forall s1 s2 ctr_id dsc_id now period I O sc ctr,
-    step s1 s2 ->
     consistent_state s1 ->
     ctr = finctr ctr_id dsc_id (zcb_desc now period) I O O sc ->
-    In ctr (m_contracts s1) ->
-    In (Executed ctr_id) (m_events s2) ->
+    joins O ctr s1 s2 now ->
     O <> 0 ->
     exists tr,
       In tr (m_ledger s2) /\
@@ -51,191 +25,222 @@ Lemma zcb_step_O_to_I :
       tr_amount tr = sc * 10.
 Proof.
   intros.
-  induction H.
-  - subst s2. find_contradiction H2.
-    destruct H3 as [H3 | H3]; try inversion H3; try contradiction.
+  destruct_join H1.
+  - insert_consistent s Ss.
+    induction St; subst s'.
+    -- inversion_event Ev. find_contradiction M.
+    -- ctr_case_analysis ctr ctr0.
+       execute_own ctr H9.
+       case_analysis H9.
+       case_analysis H12.
+       ++ eexists. split.
+          +++ eapply steps_does_not_remove_transactions; eauto.
+              simpl. subst ledger'. right. left. eauto.
+          +++ repeat split; trivial. resolve_owner H4.
+       ++ eexists. split.
+          +++ eapply steps_does_not_remove_transactions; eauto.
+              simpl. subst ledger'. left. eauto.
+          +++ repeat split; trivial. resolve_owner H4.
+    -- not_or ctr ctr0 H6.
+    -- not_or ctr ctr0 H6.
+    -- ctr_case_analysis ctr ctr0. inversion_event Ev. find_contradiction M.
+    -- find_contradiction M.
+  - insert_consistent s Ss.
+    induction St; subst s'.
+    -- inversion_event Ev. find_contradiction_del M.
+    -- ctr_case_analysis ctr ctr0.
+       subst ctr. inversion_event Ev.
+       simpl in *.
+       execute_own ctr H9.
+       case_analysis H9.
+       case_analysis H12.
+       ++ eexists. split.
+          +++ eapply steps_does_not_remove_transactions; eauto.
+              simpl. subst ledger'. right. left. eauto.
+          +++ repeat split; trivial. resolve_owner H4.
+       ++ eexists. split.
+          +++ eapply steps_does_not_remove_transactions; eauto.
+              simpl. subst ledger'. left. eauto.
+          +++ repeat split; trivial. resolve_owner H4.
+    -- not_or ctr ctr0 H6.
+    -- not_or ctr ctr0 H6.
+    -- ctr_case_analysis ctr ctr0. inversion_event Ev. find_contradiction M.
+    -- find_contradiction M.
+
+    insert_consistent s Ss.
+
+
+    insert_consistent s' St.
+    find_contradiction_del M.
+Qed.
+
+Print zcb_O_to_I.
+
+
+(* The owner's rights - see Proposition after this lemma *)
+
+(* helper lemma for the inner contract *) 
+Lemma inner_ctr_proof:
+  forall s1 s2 ctr_id dsc_id now period I O sc ctr,
+    consistent_state s1 ->
+    ctr = finctr ctr_id dsc_id (At (now + period) (Scale 11 (One USD))) I O O sc ->
+    joins O ctr s1 s2 (now + period) ->
+    O <> 0 ->
+    period > Δ ->
+    exists tr,
+      In tr (m_ledger s2) /\
+      tr_from tr = I /\
+      tr_to tr = O /\
+      tr_amount tr = sc * 11.
+Proof.
+  intros.
+  destruct_join H1.
+  insert_consistent s Ss.
+  induction St; subst s'.
+  - inversion_event Ev. find_contradiction M.
   - ctr_case_analysis ctr ctr0.
-    subst ctr s2. simpl in *.
-    destruct H3 as [H3 | H3]; try contradiction.
-    unfold exec_ctr_in_state_with_owner in *.
-    simpl in H10. inversion H10.
-    case_analysis H11.
-    case_analysis H14.
-    + eexists. simpl. split.
-      * right. left. eauto.
-      * simpl. repeat split; trivial.
-        resolve_owner H5.
-    + eexists. simpl. split.
-      * left. eauto.
-      * simpl. repeat split; trivial.
-        resolve_owner H5.
-  - ctr_case_analysis ctr ctr0. subst ctr s2. simpl in H7.
-    unfold zcb_desc in H7. inversion H7.
-  - ctr_case_analysis ctr ctr0. subst ctr s2. simpl in H7.
-    unfold zcb_desc in H7. inversion H7.
-  - ctr_case_analysis ctr ctr0. subst ctr s2.
-    simpl in H3.
-    destruct H3 as [H3 | H3]; try inversion H3.
-    find_contradiction H2.
-  - subst. simpl in *. find_contradiction H2.
+    execute_own ctr H10.
+    case_if H10.
+    case_if H14.
+    + eexists. split.
+      ++ eapply steps_does_not_remove_transactions; eauto.
+         subst ledger'. simpl. left. eauto.
+      ++ repeat split; trivial. resolve_owner H5.
+    + eapply ltb_sound_false in H10. contradict H10. rewrite <- T. unfold Δ. omega.
+  - not_or ctr ctr0 H7.
+  - not_or ctr ctr0 H7.
+  - ctr_case_analysis ctr ctr0. inversion_event Ev. find_contradiction M.
+  - find_contradiction M.
 Qed.
 
-
-(* If the owner joins, the issuer receives sc * 10 USD from the owner *)
-Proposition zcb_steps_O_to_I :
-  forall s1 s2 ctr_id dsc_id now period I O sc ctr,
-    steps s1 s2 ->
-    consistent_state s1 ->
-    ctr = finctr ctr_id dsc_id (zcb_desc now period) I O O sc ->
-    In ctr (m_contracts s1) ->
-    In (Executed ctr_id) (m_events s2) ->
-    O <> 0 ->
-    exists tr,
-      In tr (m_ledger s2) /\
-      tr_ctr_id tr = ctr_id /\
-      tr_from tr = O /\
-      tr_to tr = I /\
-      tr_amount tr = sc * 10.
-Proof.
-  intros.
-  induction H.
-  - subst. find_contradiction H2.
-  - assert (H' := H). assert (H'' := H).
-    apply steps_preserves_consistent_state in H'; auto.
-    apply steps_effect_over_contract with (ctr := ctr) in H; trivial.
-    destruct H as [H|[H|H]]; trivial.
-    + eapply zcb_step_O_to_I; eauto.
-    + subst ctr. simpl in *.
-      apply IHsteps in H.
-      destruct H as [tr [H HT]].
-      exists tr.
-      split; trivial.
-      eapply step_does_not_remove_transactions; eauto.
-    + eapply step_preserves_consistent_state in H'; eauto.
-      eapply step_does_not_remove_events in H5; eauto.
-      destruct H' as [_ [_ [_ [_ T]]]].
-      unfold not in T.
-      exfalso.
-      eapply T. subst ctr.
-      split; eauto.
-Qed.
-
-Print zcb_steps_O_to_I.
-
-
-
-(* The owner's rights *)
-
-
-Definition executed
-           (ctr : FinContract)
-           (s s' : State)
-           (at_ : Time) :=
-  exists s s',
-    step s s' /\
-    In ctr (m_contracts s) /\
-    In (Executed (ctr_id ctr)) (m_events s') /\
-    at_ = m_global_time s.
-
-Definition joins
-           (O : Address)
-           (ctr : FinContract)
-           (s1 s2 : State)
-           (at_ : Time) :=
-  exists s s', steps s1 s /\ steps s' s2 /\ executed ctr s s' at_.
-Print Result.
-Print execute.
-Definition generates
-           (ctr new_ctr : FinContract) (s : State) (O : Address) :=
-  exists result,
-    execute (ctr_primitive ctr) (ctr_scale ctr) (ctr_issuer ctr) O
-            (m_balance s) (m_global_time s) (m_gateway s) (ctr_id ctr)
-            (ctr_desc_id ctr) (m_fresh_id s) (m_ledger s) = Some result /\
-    In new_ctr (res_contracts result).
-
-Definition joins_generated
-           (O : Address)
-           (ctr : FinContract)
-           (s1 s2 : State)
-           (t_first t_second : Time) :=
-  exists s s' new_ctr, steps s1 s /\ steps s' s2 /\ executed ctr s s' t_first /\
-               joins O new_ctr s' s2 t_second /\ generates ctr new_ctr s O.
-
-
-Lemma oups:
+Proposition zcb_I_to_O:
   forall s1 s2 ctr_id dsc_id now period I O sc ctr,
     consistent_state s1 ->
     ctr = finctr ctr_id dsc_id (zcb_desc now period) I O O sc ->
     joins_generated O ctr s1 s2 now (now + period) ->
-    exists tr,
-      In tr (m_ledger s2) /\
-      tr_from tr = I /\
-      tr_to tr = O /\
-      tr_amount tr = sc * 11.
-Proof.
-
-
-(* Definition is_generated *)
-(*            (child parent : FinContract) *)
-(*            (s1 s2 : State) *)
-(*            (proposed_owner : Address) *)
-(*            (at_ : Time) := *)
-(*   exists s s' bal' ctrs' next' ledger', *)
-(*     steps s1 s /\ *)
-(*     step s s' /\ *)
-(*     steps s' s2 /\ *)
-(*     In parent (m_contracts s) /\ *)
-(*     ~ In (Executed (ctr_id ctr)) (m_events s') /\  *)
-(*     execute (ctr_primitive parent) (ctr_scale parent) (ctr_issuer parent) proposed_owner *)
-(*             (m_balance s) (m_global_time s) (m_gateway s) (ctr_id parent)  *)
-(*             (ctr_desc_id parent) (m_fresh_id s) (m_ledger s) = *)
-(*     Some (result bal' ctrs' next' ledger') /\ *)
-(*     In child ctrs' /\ at_ = m_global_time s. *)
-
-    
-(*     p_owner <> 0 /\ *)
-
-
-Lemma oups:
-  forall s1 s2 ctr_id dsc_id now period I O sc ctr,
-    consistent_state s1 ->
     O <> 0 ->
-    (exists new_ctr, is_generated_and_executed new_ctr ctr s1 s2 O now) ->
+    period > Δ ->
     exists tr,
       In tr (m_ledger s2) /\
-      tr_ctr_id tr = ctr_id /\
       tr_from tr = I /\
       tr_to tr = O /\
       tr_amount tr = sc * 11.
 Proof.
   intros.
-  destruct H3 as [new_ctr H3].
-  destruct H as (s & s' & S1 & S & S2 & IN & OW & E).
-  induction S; subst s'.
-  - simpl in E. destruct E as [E | E]; try inversion E.
-    find_contradiction IN.
-    eapply steps_preserves_consistent_state; eauto.
-  - ctr_case_analysis ctr ctr0.
-    unfold exec_ctr_in_state_with_owner in H9.
-    rewrite H1 in H9. simpl in H9.
-    case_analysis H9.
-    case_analysis H13.
+  destruct_join_gen H1.
+  insert_consistent s Ss.
+  insert_consistent s' St.
+  induction St; subst s'.
+  - inversion_event Ev. find_contradiction M.
+  - ctr_case_analysis ctr ctr1.
+    simpl in Ev. inversion_event Ev.
+    execute_own ctr H11.
+    case_analysis H11.
+    case_analysis H15.
     + eexists. split.
-      eapply steps_does_not_remove_transactions.
-      exact S2. simpl. subst ledger'. simpl. left. eauto.
-      repeat split; eauto. simpl. resolve_owner H4.
-    + destruct H3 as (gs & gs' & bal' & ctrs'' & x' & L & G1 & GS & G2 & GIN & EXEC & GEN & L').
-      rewrite H1 in EXEC. simpl in EXEC.
-      case_analysis EXEC.
-      case_analysis H13.
-      ++ eexists. split.
-         eapply steps_does_not_remove_transactions.
-         exact G2. simpl. subst ledger'. simpl. right. left. eauto.
-      repeat split; eauto. simpl. resolve_owner H4.
+      eapply steps_does_not_remove_transactions. exact Ss0.
+      subst ledger'. simpl. left. eauto.
+      repeat split; trivial.
+      simpl. resolve_owner H6.
+    + destruct_join J.
+      simpl in Exec.
+      rewrite H0, H11 in Exec.
+      inversion Exec. clear Exec. subst res.
+      simpl in M0. destruct M0 as [M0 | M0]; try contradiction.
+      eapply inner_ctr_proof; eauto.
+      unfold joins. exists s0, s'. unfold At.
+      repeat split; subst ctr0; simpl in *; try exact M1; trivial.
+  - not_or ctr ctr1 H8.
+  - not_or ctr ctr1 H8.
+  - ctr_case_analysis ctr ctr1. inversion_event Ev. find_contradiction M.
+  - find_contradiction M.
+Qed.
+
+Print zcb_I_to_O.
 
 
-Admitted. 
+Lemma O_joins_generated_too_late_inner:
+  forall s1 s2 c_id dsc_id now period I O sc ctr T,
+    consistent_state s1 ->
+    ctr = finctr c_id dsc_id (At (now + period) (Scale 11 (One USD))) I O O sc ->
+    joins O ctr s1 s2 T ->
+    T > now + period + Δ ->
+    period > Δ ->
+    O <> 0 ->
+    In (Deleted (ctr_id ctr)) (m_events s2).
+Proof.
+  intros.
+  destruct_join H1.
+  insert_consistent s Ss.
+  induction St; subst s'.
+  - inversion_event Ev. find_contradiction M.
+  - ctr_case_analysis ctr ctr0.
+    execute_own ctr H11.
+    simpl in *.
+    case_if H11.
+    case_if H14; rewrite T0 in *; apply ltb_sound_false in H0; contradict H0; omega.
+  - not_or ctr ctr0 H8.
+  - not_or ctr ctr0 H8.
+  - ctr_case_analysis ctr ctr0. inversion_event Ev. find_contradiction M.
+  - find_contradiction M.
+Qed.
 
+
+  Lemma O_joins_generated_too_late:
+  forall s1 s2 c_id dsc_id now period I O sc ctr T,
+    consistent_state s1 ->
+    ctr = finctr c_id dsc_id (zcb_desc now period) I O O sc ->
+    joins_generated O ctr s1 s2 now T ->
+    T > now + period + Δ ->
+    period > Δ ->
+    O <> 0 ->
+    exists ctr',
+      In (Deleted (ctr_id ctr')) (m_events s2) /\
+      ctr_primitive ctr' = (At (now + period) (Scale 11 (One USD))) /\
+      ctr_issuer ctr = I /\
+      ctr_proposed_owner ctr = O /\
+      ctr_scale ctr = sc.
+Proof.
+  intros.
+  destruct_join_gen H1.
+  insert_consistent s Ss.
+  induction St; subst s'.
+  - inversion_event Ev. find_contradiction M.
+  - ctr_case_analysis ctr ctr1.
+    execute_own ctr H11.
+    case_analysis H11.
+    case_analysis H14.
+    + rewrite <- T0 in *.
+      apply ltb_sound_true in H11.
+      apply ltb_sound_false in H0.
+      contradict H0. unfold Δ. omega.
+    + destruct_join J. simpl in Exec.
+      rewrite H0, H11 in Exec.
+      inversion Exec. subst res.
+      simpl. eexists.
+      split. eapply steps_does_not_remove_events; eauto.
+      eexists. repeat split; trivial.
+  - not_or ctr ctr1 H7.
+  - not_or ctr ctr1 H7.
+  - ctr_case_analysis ctr ctr1. inversion_event Ev. find_contradiction M.
+  - find_contradiction M.
+Qed.
+
+
+(* 
+Proposition zcb_I_to_O:
+  forall s1 s2 ctr_id dsc_id now period I O sc ctr,
+    consistent_state s1 ->
+    ctr = finctr ctr_id dsc_id (zcb_desc now period) I O O sc ->
+    joins_generated O ctr s1 s2 now (now + period) ->
+    O <> 0 ->
+    (now + period > Δ) ->
+    exists tr,
+      In tr (m_ledger s2) /\
+      tr_from tr = I /\
+      tr_to tr = O /\
+      tr_amount tr = sc * 11.
+Proof.
 
 
 Lemma zcb_step_I_to_O :
