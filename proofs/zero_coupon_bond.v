@@ -164,6 +164,22 @@ Proof.
     + not_or ctr ctr0 H8.
     + ctr_case_analysis ctr ctr0. inversion_event Ev. find_contradiction M.
     + find_contradiction M.
+  - destruct_deleted D.
+    insert_consistent s Ss.
+    insert_consistent s' St.
+    induction St; subst s'.
+    + inversion_event Ev. find_contradiction_del M0.
+    + inversion_event Ev. find_contradiction_del M0.
+    + not_or ctr ctr0 H8.
+    + not_or ctr ctr0 H8.
+    + ctr_case_analysis ctr ctr0.
+      inversion_event Ev.
+      * execute_own ctr H9.
+        case_analysis H9.
+        ** simpl in *. rewrite H0 in Exec. inversion Exec.
+        ** case_analysis H12.
+      * find_contradiction_del M0.
+    + find_contradiction_del M0.
 Qed.
 
 Print zcb_I_to_O.
@@ -232,6 +248,22 @@ Proof.
     + not_or ctr ctr0 H9.
     + ctr_case_analysis ctr ctr0. inversion_event Ev. find_contradiction M.
     + find_contradiction M.
+  - destruct_deleted D.
+    insert_consistent s Ss.
+    insert_consistent s' Ss.
+    induction St; subst s'.
+    + inversion_event Ev. find_contradiction_del M.
+    + inversion_event Ev. find_contradiction_del M.
+    + not_or ctr ctr0 H9.
+    + not_or ctr ctr0 H9.
+    + ctr_case_analysis ctr ctr0.
+      inversion_event Ev.
+      * execute_own ctr H10.
+        case_analysis H10.
+        ** simpl in *. rewrite H0 in Exec. inversion Exec.
+        ** case_analysis H13.
+      * find_contradiction_del M0.
+    + find_contradiction_del M0.
 Qed.
 
 Print O_joins_generated_too_late.
