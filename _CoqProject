@@ -2,9 +2,10 @@
 src/findel.v
 src/metaproperties.v
 -I proofs/
-proofs/external_rate_currency_exchange.v
-proofs/fixed_interest_rate_loan.v
 proofs/fixed_rate_currency_exchange.v
+proofs/external_rate_currency_exchange.v
 proofs/zero_coupon_bond.v
+proofs/option_derivative.v
+proofs/correct_option_derivative.v
 -I tests/
 tests/tests.v
