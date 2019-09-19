@@ -124,15 +124,30 @@ Definition joins
            (at_ : Time) :=
   exists s s', steps s1 s /\ steps s' s2 /\ (executed ctr s s' at_ \/ deleted ctr s s' at_).
 
+Definition joins_in_s
+           (O : Address)
+           (ctr : FinContract)
+           (s1 s2 s : State)
+           (at_ : Time) :=
+  exists s', steps s1 s /\ steps s' s2 /\ (executed ctr s s' at_ \/ deleted ctr s s' at_).
+
+Definition joins_at_s'
+           (O : Address)
+           (ctr : FinContract)
+           (s1 s2 s' : State)
+           (at_ : Time) :=
+  exists s, steps s1 s /\ steps s' s2 /\ (executed ctr s s' at_ \/ deleted ctr s s' at_).
+
 
 Definition generates
-           (ctr new_ctr : FinContract) (s : State) (O : Address) :=
+           (ctr new_ctr : FinContract) (s : State) (I O : Address) :=
   exists result,
-    execute (ctr_primitive ctr) (ctr_scale ctr) (ctr_issuer ctr) O
+    execute (ctr_primitive ctr) (ctr_scale ctr) I O
             (m_balance s) (m_global_time s) (m_gateway s) (ctr_id ctr)
             (ctr_desc_id ctr) (m_fresh_id s) (m_ledger s) = Some result /\
     In new_ctr (res_contracts result).
 
+(* O joins both the ctr and the generated ctr *)
 Definition joins_generated
            (O : Address)
            (ctr gen_ctr : FinContract)
@@ -140,7 +155,17 @@ Definition joins_generated
            (t_first t_second : Time) :=
   exists s s', steps s1 s /\ steps s' s2 /\
                (executed ctr s s' t_first \/ deleted ctr s s' t_first) /\
-               generates ctr gen_ctr s O /\ joins O gen_ctr s' s2 t_second.
+               generates ctr gen_ctr s (ctr_issuer ctr) O /\ joins O gen_ctr s' s2 t_second.
+
+(* O joins both the ctr, and I joins the generated ctr *)
+Definition joins_generated'
+           (O I : Address)
+           (ctr gen_ctr : FinContract)
+           (s1 s2 : State)
+           (t_first t_second : Time) :=
+  exists s s', steps s1 s /\ steps s' s2 /\
+               (executed ctr s s' t_first \/ deleted ctr s s' t_first) /\
+               generates ctr gen_ctr s (ctr_issuer ctr) O /\ joins I gen_ctr s' s2 t_second.
 
 
 Definition consistent_state (s : State) :=
