@@ -7,16 +7,15 @@ Definition erce_desc (addr : Address) :=
      (ScaleObs addr (One USD))
   ).
 
-(* The owner's rights *)
-Lemma erce_step_I_to_O:
-  forall s1 s2 ctr_id dsc_id addr I O ctr sc,
-    step s1 s2 ->
+
+Proposition frce_I_to_O :
+  forall s1 s2 s ctr_id dsc_id I O sc ctr t addr r,
     consistent_state s1 ->
     ctr = finctr ctr_id dsc_id (erce_desc addr) I O O sc ->
-    In ctr (m_contracts s1) ->
-    In (Executed ctr_id) (m_events s2) ->
+    joins_in_s O ctr s1 s2 s t ->
     O <> 0 ->
-    (exists r tr,
+    query (m_gateway s) addr t = Some r ->
+    (exists tr,
       In tr (m_ledger s2) /\
       tr_ctr_id tr = ctr_id /\
       tr_from tr = I /\
@@ -25,80 +24,45 @@ Lemma erce_step_I_to_O:
       tr_currency tr = USD).
 Proof.
   intros.
-  induction H.
-  - subst s2.
-    simpl in H3. destruct H3 as [H3 | H3]; try inversion H3.
-    find_contradiction H0.
-  - ctr_case_analysis ctr ctr0.
-    unfold exec_ctr_in_state_with_owner in H10.
-    subst ctr. simpl in H10.
-    case_match H10. destruct r. inversion H14. clear H14. subst.
-    case_eq (query (m_gateway s1) addr (m_global_time s1)); intros;
-      rewrite H10 in H1; inversion H1.
-    inversion H1. clear H1. simpl.
-    eexists. eexists.
-    split. left. eauto.
-    simpl. repeat split; eauto.
-    resolve_owner H5.
-  - ctr_case_analysis ctr ctr0. rewrite H1 in H7.
-    unfold erce_desc in H7. simpl in H7. inversion H7.
-  - ctr_case_analysis ctr ctr0. rewrite H1 in H7.
-    unfold erce_desc in H7. simpl in H7. inversion H7.
-  - case_eq (ctr_eq_dec ctr ctr0); intros; try contradiction.
-    subst ctr0 s2. simpl in H3.
-    destruct H3 as [H3 | H3]; try inversion H3.
-    find_contradiction H0.
-  - subst s2. simpl in *. find_contradiction H0.
+  destruct H1 as [s' [Ss1 [Ss2 [E | D]]]].
+  - destruct_executed E.
+    insert_consistent s Ss.
+    induction St; subst s'.
+    + inversion_event Ev. find_contradiction Ev.
+    + ctr_case_analysis ctr ctr0.
+      execute_own ctr H10. subst t. rewrite H3 in *.
+      inversion H10. subst. clear H10.
+      eexists. split.
+      eapply steps_does_not_remove_transactions; eauto.
+      simpl. left. trivial.
+      repeat split; trivial. resolve_owner H5.
+    + not_or ctr ctr0 H7.
+    + not_or ctr ctr0 H7.
+    + ctr_case_analysis ctr ctr0. inversion_event Ev. find_contradiction Ev.
+    + find_contradiction Ev.
+  - destruct_deleted D.
+    insert_consistent s Ss.
+    induction St; subst s'.
+    + inversion_event Ev. find_contradiction_del Ev.
+    + ctr_case_analysis ctr ctr0. inversion_event Ev. find_contradiction_del Ev.
+    + not_or ctr ctr0 H7.
+    + not_or ctr ctr0 H7.
+    + ctr_case_analysis ctr ctr0. execute_own ctr H8.
+      subst t. rewrite H3 in *. inversion H8.
+    + find_contradiction_del Ev.
 Qed.
 
-(* If the owner joins, then the owner receives r * sc USD from the owner *)
-Proposition erce_steps_I_to_O:
-  forall s1 s2 ctr_id dsc_id addr sc I O ctr,
-    steps s1 s2 ->
+
+Print frce_I_to_O.
+
+
+Proposition frce_O_to_I :
+  forall s1 s2 s ctr_id dsc_id I O sc ctr t addr r,
     consistent_state s1 ->
     ctr = finctr ctr_id dsc_id (erce_desc addr) I O O sc ->
-    In ctr (m_contracts s1) ->
-    In (Executed ctr_id) (m_events s2) ->
+    joins_in_s O ctr s1 s2 s t ->
     O <> 0 ->
-    (exists r tr,
-      In tr (m_ledger s2) /\
-      tr_ctr_id tr = ctr_id /\
-      tr_from tr = I /\
-      tr_to tr = O /\
-      tr_amount tr = sc * r /\
-      tr_currency tr = USD).
-Proof.
-  intros.
-  induction H.
-  - subst. find_contradiction H0.
-  - assert (H' := H).
-    apply steps_preserves_consistent_state in H'; auto.
-    apply steps_effect_over_contract with (ctr := ctr) in H; trivial.
-    destruct H as [H | [H | H]]; trivial.
-    + eapply erce_step_I_to_O; eauto.
-    + subst ctr. simpl in *. eapply IHsteps in H.
-      destruct H as [r [tr [H H'']]].
-      exists r, tr. split; trivial.
-      eapply step_does_not_remove_transactions; eauto.
-    + eapply step_preserves_consistent_state in H'; eauto.
-      destruct H' as [_ [_ [_ [_ H']]]].
-      exfalso. eapply H'. subst ctr. simpl in *.
-      split; eauto.
-      eapply step_does_not_remove_events; eauto.
-Qed.
-
-Print erce_steps_I_to_O.
-
-
-(* The issuer's rights *)
-Lemma erce_step_O_to_I:
-  forall s1 s2 ctr_id dsc_id addr sc I O ctr,
-    step s1 s2 ->
-    consistent_state s1 ->
-    ctr = finctr ctr_id dsc_id (erce_desc addr) I O O sc ->
-    In ctr (m_contracts s1) ->
-    In (Executed ctr_id) (m_events s2) ->
-    O <> 0 ->
+    query (m_gateway s) addr t = Some r ->
     (exists tr,
       In tr (m_ledger s2) /\
       tr_ctr_id tr = ctr_id /\
@@ -108,124 +72,69 @@ Lemma erce_step_O_to_I:
       tr_currency tr = EUR).
 Proof.
   intros.
-  induction H.
-  - subst s2. simpl in H3. destruct H3 as [H3 | H3]; try inversion H3.
-    find_contradiction H0.
-  - ctr_case_analysis ctr ctr0.
-    unfold exec_ctr_in_state_with_owner in H10.
-    subst ctr. simpl in H10.
-    case_match H10. destruct r. inversion H14. clear H14. subst.
-    case_eq (query (m_gateway s1) addr (m_global_time s1)); intros;
-      rewrite H10 in H1; inversion H1.
-    inversion H1. clear H1. simpl.
-    eexists. split. right. left. trivial.
-    simpl. repeat split; eauto.
-    resolve_owner H5.
-  - ctr_case_analysis ctr ctr0. rewrite H1 in H7.
-    unfold erce_desc in H7. simpl in H7. inversion H7.
-  - ctr_case_analysis ctr ctr0. rewrite H1 in H7.
-    unfold erce_desc in H7. simpl in H7. inversion H7.
-  - ctr_case_analysis ctr ctr0.
-    subst s2. simpl in H3.
-    destruct H3 as [H3 | H3]; try inversion H3.
-    find_contradiction H0.
-  - subst s2. simpl in *. find_contradiction H0.
+  destruct H1 as [s' [Ss1 [Ss2 [E | D]]]].
+  - destruct_executed E.
+    insert_consistent s Ss.
+    induction St; subst s'.
+    + inversion_event Ev. find_contradiction Ev.
+    + ctr_case_analysis ctr ctr0.
+      execute_own ctr H10. subst t. rewrite H3 in *.
+      inversion H10. subst. clear H10.
+      eexists. split.
+      eapply steps_does_not_remove_transactions; eauto.
+      simpl. right. left. trivial.
+      repeat split; trivial. resolve_owner H5.
+    + not_or ctr ctr0 H7.
+    + not_or ctr ctr0 H7.
+    + ctr_case_analysis ctr ctr0. inversion_event Ev. find_contradiction Ev.
+    + find_contradiction Ev.
+  - destruct_deleted D.
+    insert_consistent s Ss.
+    induction St; subst s'.
+    + inversion_event Ev. find_contradiction_del Ev.
+    + ctr_case_analysis ctr ctr0. inversion_event Ev. find_contradiction_del Ev.
+    + not_or ctr ctr0 H7.
+    + not_or ctr ctr0 H7.
+    + ctr_case_analysis ctr ctr0. execute_own ctr H8.
+      subst t. rewrite H3 in *. inversion H8.
+    + find_contradiction_del Ev.
 Qed.
 
+Print frce_O_to_I.
 
-Proposition erce_steps_O_to_I:
-  forall s1 s2 ctr_id dsc_id addr sc I O ctr,
-    steps s1 s2 ->
-    consistent_state s1 ->
+
+(* A failed external query implies no changes in the ledger *)
+Proposition failed_gateway_query_preserves_ledger :
+  forall s s' ctr_id dsc_id I O sc ctr t addr,
+    ((executed ctr s s' t) \/ (deleted ctr s s' t)) -> 
+    consistent_state s ->
     ctr = finctr ctr_id dsc_id (erce_desc addr) I O O sc ->
-    In ctr (m_contracts s1) ->
-    In (Executed ctr_id) (m_events s2) ->
     O <> 0 ->
-    (exists tr,
-      In tr (m_ledger s2) /\
-      tr_ctr_id tr = ctr_id /\
-      tr_from tr = O /\
-      tr_to tr = I /\
-      tr_amount tr = sc /\
-      tr_currency tr = EUR).
+    query (m_gateway s) addr t = None ->
+    m_ledger s = m_ledger s'.
 Proof.
-  intros.
-  induction H.
-  - subst. find_contradiction H0.
-  - assert (H' := H).
-    apply steps_preserves_consistent_state in H'; auto.
-    apply steps_effect_over_contract with (ctr := ctr) in H; trivial.
-    destruct H as [H | [H | H]]; trivial.
-    + eapply erce_step_O_to_I; eauto.
-    + subst ctr. simpl in *. eapply IHsteps in H.
-      destruct H as [tr [H H'']].
-      exists tr. split; trivial.
-      eapply step_does_not_remove_transactions; eauto.
-    + eapply step_preserves_consistent_state in H'; eauto.
-      destruct H' as [_ [_ [_ [_ H']]]].
-      exfalso. eapply H'. subst ctr. simpl in *.
-      split; eauto.
-      eapply step_does_not_remove_events; eauto.
+  intros *.
+  intros [E | D] C CT NA H.
+  - destruct_executed E.
+    induction St; subst s'.
+    + inversion_event Ev. find_contradiction M.
+    + ctr_case_analysis ctr ctr0.
+      execute_own ctr H6. subst t. rewrite H in *.
+      inversion H6.
+    + not_or ctr ctr0 H3.
+    + not_or ctr ctr0 H3.
+    + simpl. trivial.
+    + simpl. trivial.
+  - destruct_deleted D.
+    induction St; subst s'.
+    + inversion_event Ev. find_contradiction M.
+    + ctr_case_analysis ctr ctr0.
+      execute_own ctr H6. subst t. rewrite H in *.
+      inversion H6.
+    + not_or ctr ctr0 H3.
+    + not_or ctr ctr0 H3.
+    + simpl. trivial.
+    + simpl. trivial.
 Qed.
 
-Print erce_steps_O_to_I.
-
-
-(* Invalid gateway! *)
-
-(* Invalid gateway implies no changes in the ledger! *)
-Proposition erce_invalid_gateway:
-  forall s1 s2 ctr_id dsc_id addr sc I O ctr,
-    step s1 s2 ->
-    consistent_state s1 ->
-    ctr = finctr ctr_id dsc_id (erce_desc addr) I O O sc ->
-    In ctr (m_contracts s1) ->
-    O <> 0 ->
-    query (m_gateway s1) addr (m_global_time s1) = None ->
-    (m_ledger s1) = (m_ledger s2).
-Proof.
-  intros.
-  induction H; try subst s2; trivial; simpl in *.
-  - ctr_case_analysis ctr ctr0.
-    unfold exec_ctr_in_state_with_owner, erce_desc in H10.
-    rewrite H1 in H10. simpl in H10.
-    case_match H10. destruct r.
-    case_match H12. rewrite H4 in H10. inversion H10.
-  - ctr_case_analysis ctr ctr0. rewrite H1 in H7.
-    unfold erce_desc in H7. simpl in H7. inversion H7.
-  - ctr_case_analysis ctr ctr0. rewrite H1 in H7.
-    unfold erce_desc in H7. simpl in H7. inversion H7.
-Qed.
-
-Print erce_invalid_gateway.
-
-(* If contract gets deleted, then the ledger remains the same. *)
-Proposition erce_invalid_gtw_step:
-  forall s1 s2 ctr_id dsc_id addr sc I O ctr,
-    step s1 s2 ->
-    consistent_state s1 ->
-    ctr = finctr ctr_id dsc_id (erce_desc addr) I O O sc ->
-    In ctr (m_contracts s1) ->
-    In (Deleted ctr_id) (m_events s2) ->
-    O <> 0 ->
-    (m_ledger s1) = (m_ledger s2).
-Proof.
-  intros.
-  induction H.
-  - subst s2. simpl in H3. destruct H3 as [H3 | H3]; try inversion H3.
-    find_contradiction H0.
-  - case_eq (ctr_eq_dec ctr ctr0); intros; try contradiction.
-    subst ctr0 s2. simpl in H3.
-    destruct H3 as [H3 | H3]; try inversion H3.
-    destruct H0 as [_ [_ [_ [H0 _]]]].
-    apply H0 in H2. destruct H2 as [_ H2].
-    subst ctr. simpl in *. try contradiction.
-  - ctr_case_analysis ctr ctr0. rewrite H1 in H7.
-    unfold erce_desc in H7. simpl in H7. inversion H7.
-  - ctr_case_analysis ctr ctr0. rewrite H1 in H7.
-    unfold erce_desc in H7. simpl in H7. inversion H7.
-  - ctr_case_analysis ctr ctr0. subst s2. simpl. trivial.
-  - subst s2. simpl in *. find_contradiction H0.
-Qed.
-
-Print erce_invalid_gtw_step.
+Print failed_gateway_query_preserves_ledger.
