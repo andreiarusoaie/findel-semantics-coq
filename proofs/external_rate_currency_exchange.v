@@ -8,7 +8,7 @@ Definition erce_desc (addr : Address) :=
   ).
 
 
-Proposition frce_I_to_O :
+Proposition erce_I_to_O :
   forall s1 s2 s ctr_id dsc_id I O sc ctr t addr r,
     consistent_state s1 ->
     ctr = finctr ctr_id dsc_id (erce_desc addr) I O O sc ->
@@ -53,10 +53,10 @@ Proof.
 Qed.
 
 
-Print frce_I_to_O.
+Print erce_I_to_O.
 
 
-Proposition frce_O_to_I :
+Proposition erce_O_to_I :
   forall s1 s2 s ctr_id dsc_id I O sc ctr t addr r,
     consistent_state s1 ->
     ctr = finctr ctr_id dsc_id (erce_desc addr) I O O sc ->
@@ -100,7 +100,7 @@ Proof.
     + find_contradiction_del Ev.
 Qed.
 
-Print frce_O_to_I.
+Print erce_O_to_I.
 
 
 (* A failed external query implies no changes in the ledger *)
