@@ -4,7 +4,7 @@ Load metaproperties.
 Definition option_derivative (t period : Time) :=
   (And
      (Before t (Or (Give (One USD)) (Give (One EUR))))
-     (After (t + period) (Scale 2 (One EUR)))
+     (After (t + period) (One GBP))
   ).
 
 
@@ -12,7 +12,7 @@ Definition option_derivative (t period : Time) :=
 Lemma option_I_to_O_helper:
   forall s1 s2 t T period I O sc ctr ctr_id dsc_id,
     consistent_state s1 ->
-    ctr = finctr ctr_id dsc_id (After (t + period) (Scale 2 (One EUR))) I O O sc ->
+    ctr = finctr ctr_id dsc_id (After (t + period) (One GBP)) I O O sc ->
     joins O ctr s1 s2 T ->
     T > t + period ->
     O <> 0 ->
@@ -21,7 +21,7 @@ Lemma option_I_to_O_helper:
       tr_ctr_id tr = ctr_id /\
       tr_from tr = I /\
       tr_to tr = O /\
-      tr_amount tr = sc * 2.
+      tr_amount tr = sc.
 Proof.
   intros.
   destruct_join H1.
@@ -71,7 +71,7 @@ Proposition option_I_to_O :
       tr_ctr_id tr = (ctr_id gen_ctr) /\
       tr_from tr = I /\
       tr_to tr = O /\
-      tr_amount tr = sc * 2.
+      tr_amount tr = sc.
 Proof.
   intros.
   destruct_join_gen H1.
@@ -93,7 +93,7 @@ Proof.
            *** rewrite <- M0 in H2. simpl in H2. inversion H2.
            *** eapply option_I_to_O_helper; eauto.
                rewrite <- M0 in J.
-               rewrite <- M0. simpl.               
+               rewrite <- M0. simpl.
                exact J.
       * case_analysis H16.
         case_analysis H17; simpl in *;

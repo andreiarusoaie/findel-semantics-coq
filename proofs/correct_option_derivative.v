@@ -3,7 +3,7 @@ Load metaproperties.
 Definition option_derivative (t period : Time) :=
   (And
      (Before t (Give (Or (One USD) (One EUR))))
-     (After (t + period) (Scale 2 (One EUR)))
+     (After (t + period) (One GBP))
   ).
 
 
@@ -11,7 +11,7 @@ Definition option_derivative (t period : Time) :=
 Lemma option_I_to_O_helper:
   forall s1 s2 t T period I O sc ctr ctr_id dsc_id,
     consistent_state s1 ->
-    ctr = finctr ctr_id dsc_id (After (t + period) (Scale 2 (One EUR))) I O O sc ->
+    ctr = finctr ctr_id dsc_id (After (t + period) (One GBP)) I O O sc ->
     joins O ctr s1 s2 T ->
     T > t + period ->
     O <> 0 ->
@@ -20,7 +20,7 @@ Lemma option_I_to_O_helper:
       tr_ctr_id tr = ctr_id /\
       tr_from tr = I /\
       tr_to tr = O /\
-      tr_amount tr = sc * 2.
+      tr_amount tr = sc.
 Proof.
   intros.
   destruct_join H1.
@@ -62,7 +62,7 @@ Proposition option_I_to_O :
     consistent_state s1 ->
     ctr = finctr c_id dsc_id (option_derivative t period) I O O sc ->
     joins_generated O ctr gen_ctr s1 s2 t T ->
-    (ctr_primitive gen_ctr) = After (t + period) (Scale 2 (One EUR)) ->
+    (ctr_primitive gen_ctr) = After (t + period) (One GBP) ->
     T > t + period ->
     O <> 0 ->
     exists tr,
@@ -70,7 +70,7 @@ Proposition option_I_to_O :
       tr_ctr_id tr = (ctr_id gen_ctr) /\
       tr_from tr = I /\
       tr_to tr = O /\
-      tr_amount tr = sc * 2.
+      tr_amount tr = sc.
 Proof.
   intros.
   destruct_join_gen H1.
