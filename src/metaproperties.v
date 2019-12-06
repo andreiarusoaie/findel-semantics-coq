@@ -62,6 +62,7 @@ Ltac destruct_join H :=
   destruct H as [s [s' [Ss1 [Ss2 [E | D]]]]]; try destruct_executed E; try destruct_deleted D.
 
 
+
 Ltac destruct_generates H :=
   let res := fresh "res" in
   let Ex := fresh "Exec" in
@@ -130,6 +131,15 @@ Definition joins_in_s
            (s1 s2 s : State)
            (at_ : Time) :=
   exists s', steps s1 s /\ steps s' s2 /\ (executed ctr s s' at_ \/ deleted ctr s s' at_).
+
+Ltac destruct_joins_in H :=
+  let s := fresh "s" in
+  let Ss1 := fresh "Ss" in
+  let Ss2 := fresh "Ss" in
+  let E := fresh "E" in
+  let D := fresh "D" in
+  destruct H as [s [Ss1 [Ss2 [E | D]]]]; try destruct_executed E; try destruct_deleted D.
+
 
 Definition joins_at_s'
            (O : Address)
