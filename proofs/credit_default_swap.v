@@ -34,77 +34,139 @@ The bank B receives a fee F = k * 20 from Alice, where
 k = M - YL.
 *)
 
-
-Definition pay_sum (sum : nat) (c : Currency) :=
-  Scale sum (One c).
-
-Definition default_payment (defaulted_addr : Address)
-           (price FY : nat) (YL : Time) :=
-  If defaulted_addr
-     (pay_sum (price + (YL * FY)) USD)
-     Zero.
-
-Definition yearly_check (defaulted_addr : Address)
-           (price FY F : nat) (YL time : Time) :=
-  And (Give (pay_sum F USD))
-      (At time (default_payment defaulted_addr price FY YL)).
-
 Definition Y1 := 1000.
 Definition Y2 := 2000.
 Definition Y3 := 3000.
 
 Definition CDS (Alice C : Address)
            (defaulted_addr : Address)
-           (price FY F : nat) (YL now : Time)
+           (price FY F : nat) (now : Time)
   :=
   (
     And
-      (yearly_check defaulted_addr price FY F 2 (now + Y1))
+      (* first year *)
+      (And (Give (Scale F (One USD)))
+           (At (now + Y1)
+               (If defaulted_addr
+                   (Scale (price + (2 * FY)) (One USD))
+                   Zero)
+           )
+      )
+
       (
-        And (yearly_check defaulted_addr price FY F 1 (now + Y2))
-            (yearly_check defaulted_addr price FY F 0 (now + Y3))
+        And
+          (And (At (now + Y1) (Give (Scale F (One USD))))
+               (At (now + Y2)
+                   (If defaulted_addr
+                       (Scale (price + FY) (One USD))
+                       Zero)
+               )
+          )
+          (And (At (now + Y2) (Give (Scale F (One USD))))
+               (At (now + Y3)
+                   (If defaulted_addr
+                       (Scale price (One USD))
+                       Zero)
+               )
+          )
       )
   ).
 
-(* The issuer pays the owner *)
-Proposition pay_sum_I_to_O :
-  forall s1 s2 ctr_id dsc_id I O ctr t sum c,
+Print generates.
+Check executed.
+Print CDS.
+(* Issuer : = C
+   Owner := Alice
+ *)
+Check finctr.
+Proposition CDS_prop:
+  forall s1 s2 CDSctr CDSctr_id dsc_id Alice C defaulted_addr price B2AliceFee Alice2CFee defaulted_ctr state1 state2 state3 state4 response,
     consistent_state s1 ->
-    ctr = finctr ctr_id dsc_id (pay_sum sum c) I O O 1 ->
-    joins O ctr s1 s2 t ->
-    O <> 0 ->
+    CDSctr = finctr CDSctr_id dsc_id
+                    (CDS Alice C defaulted_addr price
+                         B2AliceFee Alice2CFee (m_global_time state1))
+                    C Alice Alice 1->
+    s1 ~~> state1 ->
+    (* ctr is executed between state1 and state2 *)
+    step state1 state2 ->
+    In CDSctr (m_contracts state1) ->
+    In (Executed (ctr_id CDSctr)) (m_events state2) ->
+
+    (* defaulted_ctr = At (now + 1) ... is generated *)
+    ~ In defaulted_ctr (m_contracts state1) ->
+    In defaulted_ctr (m_contracts state2) ->
+    (ctr_primitive defaulted_ctr = (At ((m_global_time state1) + Y1)
+               (If defaulted_addr
+                   (Scale (price + (2 * B2AliceFee)) (One USD))
+                   Zero)
+    )) ->
+
+    (* defaulted_ctr is executed *)
+    query (m_gateway state1) defaulted_addr (m_global_time state1) = Some response ->
+    response <> 0 ->
+    (forall t s, t >= (m_global_time state3) ->
+               query (m_gateway s) defaulted_addr t = Some response) -> (* consistent defaulted_addr *)
+    state2 ~~> state3 ->
+    step state3 state4 ->
+    In defaulted_ctr (m_contracts state3) ->
+    In (Executed (ctr_id defaulted_ctr)) (m_events state4) ->
+
+    state4 ~~> s2 ->
+
+    m_global_time state1 > Δ ->
+    (* conclusion *)
     (exists tr,
-      In tr (m_ledger s2) /\
-      tr_ctr_id tr = ctr_id /\
-      tr_from tr = I /\
-      tr_to tr = O /\
-      tr_amount tr = sum).
+        In tr (m_ledger s2) /\
+        tr_ctr_id tr = (ctr_id defaulted_ctr) /\
+        tr_from tr = C /\
+        tr_to tr = Alice /\
+        tr_amount tr = price + (2 * B2AliceFee)
+    ).
 Proof.
   intros.
-  destruct_join H1.
-  - insert_consistent s Ss.
-    induction St; subst s'.
-    + inversion_event Ev. find_contradiction Ev.
-    + ctr_case_analysis ctr ctr0.
-      execute_own ctr H9. inversion H9. clear H9. subst.
-      simpl in *.
-      eexists. split.
-      * eapply steps_does_not_remove_transactions; eauto; simpl. left. trivial.
-      * repeat split; trivial. resolve_owner H4.
-        simpl. omega.
-    + not_or ctr ctr0 H6.
-    + not_or ctr ctr0 H6.
-    + ctr_case_analysis ctr ctr0. inversion_event Ev. find_contradiction Ev.
-    + find_contradiction Ev.
-  - insert_consistent s Ss.
-    induction St; subst s'.
-    + inversion_event Ev. find_contradiction_del Ev.
-    + ctr_case_analysis ctr ctr0. inversion_event Ev. find_contradiction_del Ev.
-    + not_or ctr ctr0 H6.
-    + not_or ctr ctr0 H6.
-    + ctr_case_analysis ctr ctr0. execute_own ctr H7. inversion H7.
-    + find_contradiction_del Ev.
-Qed.
+  insert_consistent state1 Ss.
+  apply step_implies_execute_result with (s := state1) in H4; auto.
+  destruct H4 as [owner [result H4]].
+  rewrite H0 in H4. simpl in H4.
+  rewrite H10 in H4; auto.
+  case_match H4. destruct r.
+  case_match H20. destruct r.
+  inversion H21. subst. clear H21.
+  case_match H4. destruct r.
+  case_match H20. destruct r.
+  inversion H21. subst. clear H21.
+  case_match H4. destruct r.
+  case_match H21. destruct r.
+  inversion H22. subst. clear H22.
+  case_if H4.
+  case_if H22.
+  - case_if H23; subst.
+    + apply ltb_sound_true in H4. contradict H4.
+      unfold Y3, Δ. omega.
+    + case_if H19.
+      case_if H24; subst.
+      * apply ltb_sound_true in H19. contradict H19.
+        unfold Y2, Δ. omega.
+      * case_match H0. destruct r.
+        case_match H25. destruct r.
+        inversion H26. subst. clear H26.
+        case_if H0.
+        case_if H26; subst.
+        ** case_if H27; rewrite H19 in H0; inversion H0.
+        ** case_if H23.
+           case_if H27; subst.
+           *** apply ltb_sound_true in H23. contradict H23.
+               unfold Y1, Δ. omega.
+           *** rewrite H21, H23, H25 in H18.
+               inversion H18. subst. clear H18.
+               apply ltb_sound_true in H4. contradict H4.
+               unfold Y3, Δ. omega.
+  - subst.
+    case_if H19.
+    case_if H23; subst.
+    + apply ltb_sound_true in H19. contradict H19.
+      unfold Y2, Δ. omega.
+    + 
 
 (* If the payment is defaulted, then the insurance pays the
  price + YL * FY *)
