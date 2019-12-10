@@ -217,8 +217,7 @@ Proposition CDS_default_Y1_Alice_rights:
     (ctr_primitive c') = At t' (If defaulted_addr p1 p2) ->
     p1 <> Zero ->
     response <> 0 ->
-    (forall t s, t >= now + Y1 ->
-                 query (m_gateway s) defaulted_addr t = Some response) ->
+    query (m_gateway state3) defaulted_addr (m_global_time state3) = Some 1 ->
     (* not defaulted until now + Y1 *)
     (forall t s, t < now + Y1 ->
                  query (m_gateway s) defaulted_addr t = Some 0) ->
@@ -268,13 +267,13 @@ Proof.
            *** admit. (*apply contradiction + lemma *)
            *** simpl in In. destruct In as [In | In]; try contradiction.
                unfold can_join in H18. simpl in H18. destruct H18 as [H18 | H18]; try contradiction.
-               eapply CDS_default_Y1_Alice_rights_first_ctr.
-               
+               subst owner.
+               eapply CDS_default_Y1_Alice_rights_first_ctr; auto.
                **** unfold internal_1, At. eauto.
-               **** simpl. apply H7. admit.
+               **** exact Ss0.
                **** admit.
-               **** eexists. 
-
+               **** exact H3.
+               **** exact H7.
            *** rewrite <- In in H4. simpl in H4. unfold At in H4.
                inversion H4. subst p1. contradiction.
            *** simpl in In. destruct In as [In | In]; try contradiction.
@@ -282,9 +281,9 @@ Proof.
                inversion H4. subst p1. contradiction.
     + case_match H22. subst now. omega.
   - ctr_case_analysis CDSctr ctr.
-    subst CDSctr. unfold CDS in H19. simpl in H19. inversion H19.
+    subst CDSctr. unfold CDS in H20. simpl in H20. inversion H20.
   - ctr_case_analysis CDSctr ctr.
-    subst CDSctr. unfold CDS in H19. simpl in H19. inversion H19.
+    subst CDSctr. unfold CDS in H20. simpl in H20. inversion H20.
   - simpl in InEv. destruct InEv as [I1 | I2]; try inversion I1.
     apply consistent_impl_exec in inCtr; trivial. contradiction.
   - simpl in InCtr0. contradiction.
