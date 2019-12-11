@@ -1,6 +1,5 @@
 Load metaproperties.
 
-
 (*
 Credit default swap
 
@@ -34,6 +33,14 @@ The bank B receives a fee F = k * 20 from Alice, where
 k = M - YL.
 *)
 
+Definition pay_at_t (t : Time)
+           (I O addr : Address)
+           (sum : nat) :=
+  (At t
+      (If addr
+          (Scale sum (One USD))
+          Zero)
+  ).
 
 Definition CDS (Alice C : Address)
            (defaulted_addr : Address)
@@ -44,11 +51,7 @@ Definition CDS (Alice C : Address)
     And
       (* first year *)
       (And (Give (Scale F (One USD)))
-           (At (now + Y1)
-               (If defaulted_addr
-                   (Scale (price + (2 * FY)) (One USD))
-                   Zero)
-           )
+           (pay_at_t (now + Y1) C Alice defaulted_addr (price + (2 * FY)))
       )
 
       (
@@ -123,20 +126,14 @@ Ltac destruct_gen_new_ctr H :=
   destruct H as [Step [inCtr [InEv [T [NInCtr [InCtr' SamePrim]]]]]].
 
 
-Definition pay_at_t (t : Time)
-           (I O addr : Address)
-           (sum : nat) :=
-  (At t
-      (If addr
-          (Scale sum (One USD))
-          Zero)
-  ).
-Check is_executed.
-
-
 Axiom global_time_is_bigger_than_delta:
   forall s,
     m_global_time s > Δ.
+
+Create HintDb cds.
+Hint Resolve global_time_is_bigger_than_delta : cds.
+Hint Constructors steps : cds.
+Hint Constructors step : cds.
 
 Proposition pay_at_t_O_rights:
   forall s1 s2 c t I O addr sum c_id dsc_id response,
@@ -186,12 +183,30 @@ Qed.
 Lemma helper_1 :
   forall t y d, t > d -> d > 0 -> (t + y + d <? t) = false.
 Proof.
-Admitted.
+  intros.
+  case_eq (t + y + d <? t); intros * H'; trivial.
+  apply ltb_sound_true in H'.
+  omega.
+Qed.
 
 Lemma helper_2 :
   forall t y d,  y > d -> (t + y - d <? t) = false.
 Proof.
-Admitted.
+  intros.
+  case_eq (t + y - d <? t); intros * H'; trivial.
+  apply ltb_sound_true in H'.
+  omega.
+Qed.
+
+Lemma in_smaller_list :
+  forall l x x', In x (rm x' l) -> In x l.
+Proof.
+  induction l; intros; simpl in *; trivial.
+  case_eq (ctr_eq_dec x' a); intros * H'; rewrite H' in H.
+  - subst. right. eapply IHl. eauto.
+  - contradiction.
+Qed.
+
 
 Proposition CDS_defaulted_in_Y1_Alice_rights:
   forall CDSctr CDSctr_id dsc_id Alice C defaulted_addr
@@ -211,11 +226,12 @@ Proposition CDS_defaulted_in_Y1_Alice_rights:
     s2 ~~> s3 ->
 
     (* execute c' at now + Y1 *)
+    can_join Alice c' ->
     is_executed c' s3 s4 (now + Y1) ->
     (ctr_primitive c') = pay_at_t (now + Y1) C Alice defaulted_addr (price + 2 * B2AliceFee) ->
     response <> 0 ->
     (* in s3, B defaults and C has to pay Alice *)
-    query (m_gateway s3) defaulted_addr (m_global_time s3) = Some 1 ->
+    query (m_gateway s3) defaulted_addr (m_global_time s1 + Y1) = Some 1 ->
 
 
     (* technical conditions: a year has more greater than 30 sec. :-) *)
@@ -223,64 +239,41 @@ Proposition CDS_defaulted_in_Y1_Alice_rights:
     Alice <> 0 ->
     (* conclusion *)
     (exists tr,
-        In tr (m_ledger s2) /\
+        In tr (m_ledger s4) /\
         tr_ctr_id tr = (ctr_id c') /\
         tr_from tr = C /\
         tr_to tr = Alice /\
         tr_amount tr = price + (2 * B2AliceFee)
     ).
 Proof.
-  intros * C CDS Gen Ss H Hp R Q HY1 HY2 HY3 HY4 HY5 Al.
+  intros * C CDS Gen Ss J H Hp R Q HY1 HY2 HY3 HY4 HY5 Al.
   destruct_gen_new_ctr Gen.
   insert_consistent s2 Step.
   insert_consistent s3 Ss.
   induction Step; subst s2.
-  - inversion_event InEv. 
+  - inversion_event InEv.
     apply consistent_impl_exec in inCtr; auto. contradiction.
   - ctr_case_analysis CDSctr ctr.
-    execute_own CDSctr H8.
-    case_match H8.
-
-
-    + destruct r. case_match H26. destruct r. inversion H27. clear H27. subst now.
-      case_match H23. destruct r.
-      case_match H27. destruct r. inversion H28. clear H28. subst ctrs'.
-      case_if H23.
-      case_if H28.
-      * apply ltb_sound_true in H23. contradict H23. omega.
-      * subst res_next3 res_ledger3 res_contracts3 res_balance2 res_balance1 res_next1 res_ledger1. simpl in *.
-        case_if H25.
-        case_if H29.
-        ** apply ltb_sound_true in H25. contradict H25. omega.
-        ** rewrite H25, H26 in H1.
-           inversion H1. clear H1.
-           subst res_contracts0 res_next0 res_ledger0 res_ledger2 res_contracts2 res_next2 res_balance0 res_balance3.
-           inversion H32. clear H32.
-           subst ledger' next' res_contracts1.
-           repeat rewrite in_app_iff in InCtr0.
-           destruct InCtr0 as [In | [In | [In | In]]].
-           *** admit. (*apply contradiction + lemma *)
-           *** simpl in In. destruct In as [In | In]; try contradiction.
-               unfold can_join in H18. simpl in H18. destruct H18 as [H18 | H18]; try contradiction.
-               subst owner.
-               eapply CDS_default_Y1_Alice_rights_first_ctr; auto.
-               **** unfold internal_1, At. eauto.
-               **** exact Ss0.
-               **** admit.
-               **** exact H3.
-               **** exact H7.
-           *** rewrite <- In in H4. simpl in H4. unfold At in H4.
-               inversion H4. subst p1. contradiction.
-           *** simpl in In. destruct In as [In | In]; try contradiction.
-               rewrite <- In in H4. simpl in H4. unfold At in H4.
-               inversion H4. subst p1. contradiction.
-    + case_match H22. subst now. omega.
+    execute_own CDSctr H8. subst now.
+    rewrite helper_1, helper_2 in H8; try assumption; try unfold Δ; try omega; auto with cds.
+    rewrite helper_1, helper_2 in H8; try assumption; try unfold Δ; try omega; auto with cds.
+    simpl in *. inversion H8. clear H8. subst.
+    repeat rewrite in_app_iff in InCtr0.
+    destruct InCtr0 as [In | [In | [In | In]]].
+    + apply in_smaller_list in In; try contradiction.
+    + eapply pay_at_t_O_rights; eauto. rewrite <- In. simpl. reflexivity.
+    + rewrite <- In in R. inversion R.
+    + simpl in In. destruct In as [In | In]; try contradiction.
+      rewrite <- In in R. inversion R.
   - ctr_case_analysis CDSctr ctr.
-    subst CDSctr. unfold CDS in H20. simpl in H20. inversion H20.
+    rewrite CDS in H5.  simpl in H5. unfold Top.CDS in H5. inversion H5.
   - ctr_case_analysis CDSctr ctr.
-    subst CDSctr. unfold CDS in H20. simpl in H20. inversion H20.
-  - simpl in InEv. destruct InEv as [I1 | I2]; try inversion I1.
-    apply consistent_impl_exec in inCtr; trivial. contradiction.
+    rewrite CDS in H5.  simpl in H5. unfold Top.CDS in H5. inversion H5.
+  - ctr_case_analysis CDSctr ctr.
+    execute_own CDSctr H6. subst now.
+    rewrite helper_1, helper_2 in H6; try assumption; try unfold Δ; try omega; auto with cds.
+    rewrite helper_1, helper_2 in H6; try assumption; try unfold Δ; try omega; auto with cds.
+    inversion H6.
   - simpl in InCtr0. contradiction.
 Qed.
 
