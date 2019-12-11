@@ -82,36 +82,27 @@ Definition CDS (Alice C : Address)
   ).
 
 
-Definition is_executed_at (c : FinContract)
-           (s1 s2 state1 state2 : State)
+Definition is_executed (c : FinContract)
+           (state1 state2 : State)
            (time : Time) :=
-    steps s1 state1 /\
     step state1 state2 /\
-    steps state2 s2 /\
-    can_join (ctr_owner c) c /\ 
     In c (m_contracts state1) /\
     In (Executed (ctr_id c)) (m_events state2) /\
     time = (m_global_time state1).
 
 Ltac destruct_exec H :=
   let Step := fresh "Step" in
-  let Ss1 := fresh "Ss" in
-  let Ss2 := fresh "Ss" in
-  let Join := fresh "Join" in
   let InCtr := fresh "InCtr" in
   let InEv := fresh "InEv" in
   let T := fresh "T" in
-  destruct H as [Ss1 [Step [Ss2 [Join [inCtr [InEv T]]]]]].
+  destruct H as [Step [inCtr [InEv T]]].
 
 Definition generates_new_ctr_when_executed_at (c c': FinContract)
            (proposed_owner : Address)
-           (s1 s2 state1 state2 : State)
+           (state1 state2 : State)
            (time : Time) :=
     (* is_executed_at *)
-    steps s1 state1 /\
     step state1 state2 /\
-    steps state2 s2 /\
-    can_join (ctr_owner c) c /\ 
     In c (m_contracts state1) /\
     In (Executed (ctr_id c)) (m_events state2) /\
     time = (m_global_time state1) /\
@@ -120,110 +111,114 @@ Definition generates_new_ctr_when_executed_at (c c': FinContract)
     In c' (m_contracts state2) /\
     (ctr_proposed_owner c' = proposed_owner).
 
+
 Ltac destruct_gen_new_ctr H :=
-  let Ss1 := fresh "Ss" in
-  let Ss2 := fresh "Ss" in
   let Step := fresh "Step" in
-  let Join := fresh "Join" in
   let InCtr := fresh "InCtr" in
   let InEv := fresh "InEv" in
   let T := fresh "T" in
   let InCtr' := fresh "InCtr" in
   let NInCtr := fresh "NInCtr" in
   let SamePrim := fresh "SamePrim" in
-  destruct H as [Ss1 [Step [Ss2 [Join [inCtr [InEv [T [NInCtr [InCtr' SamePrim]]]]]]]]].
+  destruct H as [Step [inCtr [InEv [T [NInCtr [InCtr' SamePrim]]]]]].
 
 
-Definition internal_1 (t : Time) (C Alice defaulted_addr : Address)
-           (price B2AliceFee : nat) :=
+Definition pay_at_t (t : Time)
+           (I O addr : Address)
+           (sum : nat) :=
   (At t
-      (If defaulted_addr
-          (Scale (price + (B2AliceFee + (B2AliceFee + 0)))
-                 (One USD)) Zero)).
-    
+      (If addr
+          (Scale sum (One USD))
+          Zero)
+  ).
+Check is_executed.
 
-Proposition CDS_default_Y1_Alice_rights_first_ctr:
-  forall s1 s2 s s' c_id dsc_id defaulted_addr price
-         B2AliceFee c C Alice t response,
-    c = finctr c_id dsc_id
-               (internal_1 t C Alice defaulted_addr price B2AliceFee)
-               C Alice Alice 1 ->
-    s1 ~~> s2 ->
-    consistent_state s1 ->
-    is_executed_at c s1 s2 s s' t ->
+
+Axiom global_time_is_bigger_than_delta:
+  forall s,
+    m_global_time s > Δ.
+
+Proposition pay_at_t_O_rights:
+  forall s1 s2 c t I O addr sum c_id dsc_id response,
+    c = finctr c_id dsc_id (pay_at_t t I O addr sum) I O O 1 ->
+    is_executed c s1 s2 t ->
+    query (m_gateway s1) addr t = Some response ->
+    can_join O c ->
+    O <> 0 -> 
     response <> 0 ->
-    query (m_gateway s) defaulted_addr (m_global_time s) = Some response ->
-    Alice <> 0 ->
-    m_global_time s > Δ ->
-    (* conclusion *)
+    consistent_state s1 ->
     (exists tr,
         In tr (m_ledger s2) /\
         tr_ctr_id tr = (ctr_id c) /\
-        tr_from tr = C /\
-        tr_to tr = Alice /\
-        tr_amount tr = price + (2 * B2AliceFee)
+        tr_from tr = I /\
+        tr_to tr = O /\
+        tr_amount tr = sum
     ).
 Proof.
   intros.
-  destruct_exec H2.
-  insert_consistent s Ss.
-  induction Step; subst s'.
-  - inversion_event InEv. find_contradiction I2.
+  destruct_exec H0.
+  induction Step; subst s2.
+  - inversion_event InEv. find_contradiction InEv.
   - ctr_case_analysis c ctr.
-    execute_own c H13.
-    case_if H13.
-    case_if H16.
-    + rewrite H4 in H17; auto.
-      case_if H17.
-      * destruct response. contradiction.
-        simpl in H15. inversion H15.
-      * subst. simpl in *. clear H14.
-        eexists.
-        apply steps_does_not_remove_transactions with
-            (tr := {|
-           tr_id := m_fresh_id s;
-           tr_ctr_id := c_id;
-           tr_from := C;
-           tr_to := owner;
-           tr_amount := price + (B2AliceFee + (B2AliceFee + 0)) + 0;
-           tr_currency := USD;
-           tr_timestamp := m_global_time s |}) in Ss0.
-        repeat split; eauto; simpl.
-        ** resolve_owner H8.
-        ** omega.
-        ** simpl. left. trivial.
-    + subst t. apply ltb_sound_false in H13. contradict H13.
+    execute_own c H11.
+    case_if H11.
+    case_if H14; simpl.
+    + subst t.
+      rewrite H1 in H15.
+      destruct response; simpl in *; try contradiction.
+      inversion H15. subst.
+      eexists.
+      split.
+      * simpl. left. eauto.
+      * repeat split; simpl; trivial.
+        resolve_owner H6. omega.
+    + subst t. apply ltb_sound_false in H11. contradict H11.
+      assert (H' : m_global_time s1 > Δ).
+      apply global_time_is_bigger_than_delta. 
       unfold Δ. omega.
-  - not_or c ctr H10.
-  - not_or c ctr H10.
+  - not_or c ctr H8.
+  - not_or c ctr H8.
   - ctr_case_analysis c ctr. inversion_event InEv. find_contradiction InEv.
   - find_contradiction InEv.
 Qed.
 
 
+Lemma helper_1 :
+  forall t y d, t > d -> d > 0 -> (t + y + d <? t) = false.
+Proof.
+Admitted.
 
-Proposition CDS_default_Y1_Alice_rights:
-  forall s1 s2 CDSctr CDSctr_id dsc_id Alice C defaulted_addr price B2AliceFee Alice2CFee state1 state2 state3 state4 response now c' Y1 Y2 Y3 t' p1 p2,
-    s1 ~~> s2 ->
+Lemma helper_2 :
+  forall t y d,  y > d -> (t + y - d <? t) = false.
+Proof.
+Admitted.
+
+Proposition CDS_defaulted_in_Y1_Alice_rights:
+  forall CDSctr CDSctr_id dsc_id Alice C defaulted_addr
+         price B2AliceFee Alice2CFee s1 s2 s3 s4 response now c'
+         Y1 Y2 Y3,
     consistent_state s1 ->
     CDSctr = finctr CDSctr_id dsc_id
                     (CDS Alice C defaulted_addr price
                          B2AliceFee Alice2CFee now Y1 Y2 Y3)
                     C Alice Alice 1 ->
-    generates_new_ctr_when_executed_at CDSctr c' Alice s1 s2 state1 state2 now ->
+    (* execute CDS first; it will generate a few contracts *)
+    generates_new_ctr_when_executed_at CDSctr c' Alice s1 s2 now ->
+    (* in s1, B did not defaulted *)
+    query (m_gateway s1) defaulted_addr (m_global_time s1) = Some 1 ->
 
-    (* defaulted at now + Y1; primitive(c') = At t' (If defaulted_addr p1 p2) /\ p1 <> Zero  *)
-    is_executed_at c' state2 s2 state3 state4 (now + Y1) ->
-    (ctr_primitive c') = At t' (If defaulted_addr p1 p2) ->
-    p1 <> Zero ->
+    (* several steps later *)
+    s2 ~~> s3 ->
+
+    (* execute c' at now + Y1 *)
+    is_executed c' s3 s4 (now + Y1) ->
+    (ctr_primitive c') = pay_at_t (now + Y1) C Alice defaulted_addr (price + 2 * B2AliceFee) ->
     response <> 0 ->
-    query (m_gateway state3) defaulted_addr (m_global_time state3) = Some 1 ->
-    (* not defaulted until now + Y1 *)
-    (forall t s, t < now + Y1 ->
-                 query (m_gateway s) defaulted_addr t = Some 0) ->
+    (* in s3, B defaults and C has to pay Alice *)
+    query (m_gateway s3) defaulted_addr (m_global_time s3) = Some 1 ->
 
-    (* technical conditions: the global time and Yrs are all greater than 30 sec. *)
-    (forall s, m_global_time s > Δ) ->
+
+    (* technical conditions: a year has more greater than 30 sec. :-) *)
     Y1 > Δ -> Y2 > Δ -> Y3 > Δ -> Y2 - Y1 > Δ -> Y3 - Y2 > Δ ->
     Alice <> 0 ->
     (* conclusion *)
@@ -235,18 +230,18 @@ Proposition CDS_default_Y1_Alice_rights:
         tr_amount tr = price + (2 * B2AliceFee)
     ).
 Proof.
-  intros.
-  destruct_gen_new_ctr H2.
-  insert_consistent state1 Ss.
-  insert_consistent state2 Ss.
-  Check step_implies_execute_result.
-  induction Step; subst state2.
-  - inversion_event InEv.
+  intros * C CDS Gen Ss H Hp R Q HY1 HY2 HY3 HY4 HY5 Al.
+  destruct_gen_new_ctr Gen.
+  insert_consistent s2 Step.
+  insert_consistent s3 Ss.
+  induction Step; subst s2.
+  - inversion_event InEv. 
     apply consistent_impl_exec in inCtr; auto. contradiction.
   - ctr_case_analysis CDSctr ctr.
-    execute_own CDSctr H23.
-    rewrite H8 in H23. simpl in H23.
-    case_match H23.
+    execute_own CDSctr H8.
+    case_match H8.
+
+
     + destruct r. case_match H26. destruct r. inversion H27. clear H27. subst now.
       case_match H23. destruct r.
       case_match H27. destruct r. inversion H28. clear H28. subst ctrs'.
