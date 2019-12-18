@@ -692,7 +692,7 @@ Facts proved below:
 *)
 
 (* If Alice joins C1, the ledger remains unchanged *)
-Proposition CDS_Y2_Alice_is_not_paid_if_joins_C1 :
+Proposition CDS_Y2_C1 :
   forall CDSctr c' CDSctr_id dsc_id Alice C defaulted_addr
          price b2afee a2cfee s1 s2 s3 s4 now Y1 Y2 Y3,
     (* the execution of CDS generates 3 new contracts *)
@@ -934,7 +934,7 @@ Proposition CDS_Y2_C_gets_paid :
     now > Δ ->
     Y1 > Δ ->
     Y2 > Δ ->
-    Y2 -Y1 > Δ ->
+    Y2 - Y1 > Δ ->
     consistent_state s1 ->
 
     (* If Alice joins C2, then she pays a second fee to C *)
@@ -989,4 +989,329 @@ Qed.
 
 
 
+(*
+Scenario 3: B defaults in the third year.
+Facts proved below:
+1. Alice receives price + 0 * B2AliceFee as specified by C3 
+2. C does not pay anyhting if Alice joins C1 or C2
+3. C receives Alice2CFee from Alice as specified by C3
+*)
 
+(* If Alice joins C1, the ledger remains unchanged *)
+Proposition CDS_Y3_C1 :
+  forall CDSctr c' CDSctr_id dsc_id Alice C defaulted_addr
+         price b2afee a2cfee s1 s2 s3 s4 now Y1 Y2 Y3,
+    (* the execution of CDS generates 3 new contracts *)
+    CDSctr = finctr CDSctr_id dsc_id
+                    (CDS Alice C defaulted_addr price
+                         b2afee a2cfee now Y1 Y2 Y3)
+                    C Alice Alice 1 ->
+    is_executed CDSctr s1 s2 now -> 
+    query (m_gateway s1) defaulted_addr now = Some 0 ->
+
+    (* new contracts are joined by Alice *)
+    ~ In c' (m_contracts s1) ->
+    In c' (m_contracts s2) ->
+    s2 ~~> s3 ->
+    (forall t, t >= now + Y1 -> is_executed c' s3 s4 t) ->
+    (* still not defaulted *)
+    query (m_gateway s3) defaulted_addr (now + Y1) = Some 0 ->
+    query (m_gateway s3) defaulted_addr (now + Y2) = Some 0 ->
+    (* default after 2 years *)
+    query (m_gateway s3) defaulted_addr (now + Y3) = Some 1 ->
+
+
+    (* details *)
+    Alice <> 0 ->
+    now > Δ ->
+    Y1 > Δ ->
+    Y2 > Δ ->
+    Y3 > Δ ->
+    consistent_state s1 ->
+
+    (* If Alice joins C1, nothing happens *)
+    (ctr_primitive c' = pay_at_t (now + Y1) defaulted_addr (price + (2 * b2afee)) -> 
+     m_ledger s3 = m_ledger s4).
+Proof.
+  intros * CDS Exec1 Q1 NIn InCtr Ss Exec2 Q2 Q3 Q4 Ho Hn Hy1 Hy2 Hy3 Cst Prim.
+  destruct_exec Exec1.
+  insert_consistent s2 Step.
+  insert_consistent s3 Ss.
+  induction Step; subst s2.
+  - inversion_event InEv.
+    apply consistent_impl_exec in InCtr0; auto. contradiction.
+  - ctr_case_analysis CDSctr ctr. clear H8.
+    execute_own CDSctr H7. simpl in *.
+    subst now.
+    rewrite helper_1, helper_2 in H7; unfold Δ; try auto; try omega.
+    rewrite helper_1, helper_2 in H7; unfold Δ; try auto; try omega.
+    inversion H7. clear H7. subst.
+    repeat rewrite in_app_iff in InCtr.
+    destruct InCtr as [InCtr | InCtr].
+    + apply in_smaller_list in InCtr. contradiction.
+    + simpl in InCtr. destruct InCtr as [InCtr | [InCtr | [InCtr | InCtr]]]; try contradiction.
+      * resolve_owner H2.
+        eapply pay_at_t_not_defaulted; eauto.
+      * subst c'. inversion Prim.
+      * subst c'. inversion Prim.
+  - not_or ctr CDSctr H4.
+  - not_or ctr CDSctr H4.
+  - ctr_case_analysis CDSctr ctr.
+    execute_own CDSctr H5. inversion InEv.
+    apply consistent_impl_exec in InCtr0; auto. inversion H7; auto.
+    find_contradiction InEv.
+  - simpl in InCtr. contradiction.
+Qed.
+
+
+
+Lemma exec_later_no_effect :
+  forall s1 s2 c T t t' primitive,
+    is_executed c s1 s2 (T + t) ->
+    ctr_primitive c = At (T + t') primitive ->
+    t - t' > Δ ->
+    m_ledger s1 = m_ledger s2.
+Proof.
+  intros * Exec Prim C.
+  destruct_exec Exec.
+  induction Step; subst s2; try auto.
+  - ctr_case_analysis c ctr.
+    destruct c. simpl in Prim. subst ctr_primitive0.
+    unfold exec_ctr_in_state_with_owner, execute in H5. simpl in *.
+    case_if H5.
+    clear H9 H6 H3 H H0 H2 H4.
+    rewrite <- T0 in *.
+    apply ltb_sound_false in H7.
+    contradict H7.
+    omega.
+  - ctr_case_analysis c ctr. rewrite Prim in H2. inversion H2.
+  - ctr_case_analysis c ctr. rewrite Prim in H2. inversion H2.
+Qed.
+
+  
+(* If Alice joins C2, nothing happens *)
+Proposition CDS_Y3_C2:
+  forall CDSctr c' CDSctr_id dsc_id Alice C defaulted_addr
+         price b2afee a2cfee s1 s2 s3 s4 now Y1 Y2 Y3,
+    (* the execution of CDS generates 3 new contracts *)
+    CDSctr = finctr CDSctr_id dsc_id
+                    (CDS Alice C defaulted_addr price
+                         b2afee a2cfee now Y1 Y2 Y3)
+                    C Alice Alice 1 ->
+    is_executed CDSctr s1 s2 now -> 
+    query (m_gateway s1) defaulted_addr now = Some 0 ->
+
+    (* new contracts are joined by Alice *)
+    ~ In c' (m_contracts s1) ->
+    In c' (m_contracts s2) ->
+    s2 ~~> s3 ->
+    (* if c' is executed at t < now + Y2 then c' execution will be postponed
+       if c' is executed at t >= now + Y2 it will have no effect on the ledger *)
+    is_executed c' s3 s4 (now + Y2) ->
+    (* still not defaulted *)
+    query (m_gateway s3) defaulted_addr (now + Y1) = Some 0 ->
+    query (m_gateway s3) defaulted_addr (now + Y2) = Some 0 ->
+    (* default after 3 years *)
+    query (m_gateway s3) defaulted_addr (now + Y3) = Some 1 ->
+
+
+    (* details *)
+    Alice <> 0 ->
+    now > Δ ->
+    Y1 > Δ ->
+    Y2 > Δ ->
+    Y2 - Y1 > Δ ->
+    consistent_state s1 ->
+
+    (* If Alice joins C2, then no transactions are added to the ledger *)
+    (ctr_primitive c' = yearly_check (now + Y1) (now + Y2)
+                                     defaulted_addr price b2afee a2cfee 1  ->
+      m_ledger s3 = m_ledger s4
+    ).
+Proof.
+  intros * CDS Exec1 Q1 NIn InCtr Ss Exec2 Q2 Q3 Ho Hn Hy1 Hy2 Hy3 Hy4 Cst Prim.
+  destruct_exec Exec1.
+  insert_consistent s2 Step.
+  insert_consistent s3 Ss.
+  induction Step; subst s2.
+  - inversion_event InEv.
+    apply consistent_impl_exec in InCtr0; auto. contradiction.
+  - ctr_case_analysis CDSctr ctr. clear H8.
+    execute_own CDSctr H7. simpl in *.
+    subst now.
+    rewrite helper_1, helper_2 in H7; unfold Δ; try auto; try omega.
+    rewrite helper_1, helper_2 in H7; unfold Δ; try auto; try omega.
+    inversion H7. clear H7. subst.
+    repeat rewrite in_app_iff in InCtr.
+    destruct InCtr as [InCtr | InCtr].
+    + apply in_smaller_list in InCtr. contradiction.
+    + simpl in InCtr. destruct InCtr as [InCtr | [InCtr | [InCtr | InCtr]]]; try contradiction.
+      * subst c'. inversion Prim.
+      * eapply exec_later_no_effect; eauto.
+      * subst c'. inversion Prim.
+        contradict H9. omega.
+  - not_or ctr CDSctr H4.
+  - not_or ctr CDSctr H4.
+  - ctr_case_analysis CDSctr ctr.
+    execute_own CDSctr H5. inversion InEv.
+    apply consistent_impl_exec in InCtr0; auto. inversion H7; auto.
+    find_contradiction InEv.
+  - simpl in InCtr. contradiction.
+Qed.
+
+
+(*
+If Alice joins C3, a new contract is generated, where:
+1.  Alice is the owner
+2.  C is the issuer
+3. the primitive is pat_at_t
+4. the value of the contract is price
+*)
+Proposition CDS_Y3_C3:
+  forall CDSctr c' CDSctr_id dsc_id Alice C defaulted_addr
+         price b2afee a2cfee s1 s2 s3 s4 now Y1 Y2 Y3,
+    (* the execution of CDS generates 3 new contracts *)
+    CDSctr = finctr CDSctr_id dsc_id
+                    (CDS Alice C defaulted_addr price
+                         b2afee a2cfee now Y1 Y2 Y3)
+                    C Alice Alice 1 ->
+    is_executed CDSctr s1 s2 now -> 
+    query (m_gateway s1) defaulted_addr now = Some 0 ->
+
+    (* new contracts are joined by Alice *)
+    ~ In c' (m_contracts s1) ->
+    In c' (m_contracts s2) ->
+    s2 ~~> s3 ->
+    is_executed c' s3 s4 (now + Y2) ->
+    (* default after 2 years *)
+    query (m_gateway s3) defaulted_addr (now + Y2) = Some 0 ->
+    query (m_gateway s3) defaulted_addr (now + Y3) = Some 1 ->
+
+
+    (* details *)
+    Alice <> 0 ->
+    now > Δ ->
+    Y1 > Δ ->
+    Y2 > Δ ->
+    Y3 - Y2 > Δ ->
+    consistent_state s1 ->
+
+    (* If Alice joins C3, then a contract is generated *)
+    (ctr_primitive c' = yearly_check (now + Y2) (now + Y3)
+                                     defaulted_addr price b2afee a2cfee 1  ->
+     (exists ctr,
+         In ctr (m_contracts s4) /\
+         ctr_issuer ctr = C /\
+         ctr_owner ctr = Alice /\
+         (ctr_primitive ctr = pay_at_t (now + Y3) defaulted_addr price))
+    ).
+Proof.
+  intros * CDS Exec1 Q1 NIn InCtr Ss Exec2 Q2 Q3 Ho Hn Hy1 Hy2 Hy3 Cst Prim.
+  destruct_exec Exec1.
+  insert_consistent s2 Step.
+  insert_consistent s3 Ss.
+  induction Step; subst s2.
+  - inversion_event InEv.
+    apply consistent_impl_exec in InCtr0; auto. contradiction.
+  - ctr_case_analysis CDSctr ctr. clear H8.
+    execute_own CDSctr H7. simpl in *.
+    subst now.
+    rewrite helper_1, helper_2 in H7; unfold Δ; try auto; try omega.
+    rewrite helper_1, helper_2 in H7; unfold Δ; try auto; try omega.
+    inversion H7. clear H7. subst.
+    repeat rewrite in_app_iff in InCtr.
+    destruct InCtr as [InCtr | InCtr].
+    + apply in_smaller_list in InCtr. contradiction.
+    + simpl in InCtr. destruct InCtr as [InCtr | [InCtr | [InCtr | InCtr]]]; try contradiction.
+      * subst c'. inversion Prim.
+      * subst c'. inversion Prim.
+        contradict H9. omega.
+      * resolve_owner H2.
+        assert (H' : price = price + 0 * b2afee); try omega.
+        rewrite H'.
+        eapply yearly_checks_not_defaulted; eauto; try omega.
+  - not_or ctr CDSctr H4.
+  - not_or ctr CDSctr H4.
+  - ctr_case_analysis CDSctr ctr.
+    execute_own CDSctr H5. inversion InEv.
+    apply consistent_impl_exec in InCtr0; auto. inversion H7; auto.
+    find_contradiction InEv.
+  - simpl in InCtr. contradiction.
+Qed.
+
+
+Proposition CDS_Y3_C_gets_paid :
+  forall CDSctr CDSctr_id dsc_id Alice C defaulted_addr
+         price c' b2afee a2cfee s1 s2 s3 s4 now Y1 Y2 Y3,
+    (* the execution of CDS generates 3 new contracts *)
+    CDSctr = finctr CDSctr_id dsc_id
+                    (CDS Alice C defaulted_addr price
+                         b2afee a2cfee now Y1 Y2 Y3)
+                    C Alice Alice 1 ->
+    is_executed CDSctr s1 s2 now -> 
+    query (m_gateway s1) defaulted_addr now = Some 0 ->
+
+    (* new contracts are joined by Alice *)
+    ~ In c' (m_contracts s1) ->
+    In c' (m_contracts s2) ->
+    s2 ~~> s3 ->
+    is_executed c' s3 s4 (now + Y2) ->
+    (* still not defaulted *)
+    query (m_gateway s3) defaulted_addr (now + Y1) = Some 0 ->
+    query (m_gateway s3) defaulted_addr (now + Y2) = Some 0 ->
+    (* default after 2 years *)
+    query (m_gateway s3) defaulted_addr (now + Y3) = Some 1 ->
+
+
+    (* details *)
+    Alice <> 0 ->
+    now > Δ ->
+    Y1 > Δ ->
+    Y2 > Δ ->
+    Y2 - Y1 > Δ ->
+    Y3 - Y2 > Δ ->
+    consistent_state s1 ->
+
+    (* If Alice joins C2, then she pays a second fee to C *)
+    (ctr_primitive c' = yearly_check (now + Y2) (now + Y3)
+                                     defaulted_addr price b2afee a2cfee 1  ->
+     (exists tr,
+         In tr (m_ledger s4) /\
+         tr_ctr_id tr = (ctr_id c') /\
+         tr_from tr = Alice /\
+         tr_to tr = C /\
+         tr_amount tr = a2cfee
+     )).
+Proof.
+  intros * CDS Exec1 Q1 NIn InCtr Ss Exec2 Q2 Q3 Ho Hn Hy1 Hy2 Hy3 Hy4 Hy5 Cst Prim.
+  destruct_exec Exec1.
+  insert_consistent s2 Step.
+  insert_consistent s3 Ss.
+  induction Step; subst s2.
+  - inversion_event InEv.
+    apply consistent_impl_exec in InCtr0; auto. contradiction.
+  - ctr_case_analysis CDSctr ctr. clear H8.
+    execute_own CDSctr H7. simpl in *.
+    subst now.
+    rewrite helper_1, helper_2 in H7; unfold Δ; try auto; try omega.
+    rewrite helper_1, helper_2 in H7; unfold Δ; try auto; try omega.
+    inversion H7. clear H7. subst.
+    repeat rewrite in_app_iff in InCtr.
+    destruct InCtr as [InCtr | InCtr].
+    + apply in_smaller_list in InCtr. contradiction.
+    + simpl in InCtr. destruct InCtr as [InCtr | [InCtr | [InCtr | InCtr]]]; try contradiction.
+      * subst c'. inversion Prim.
+      * subst c'. inversion Prim.
+        contradict H9. omega.
+      * subst c'. resolve_owner H2.
+        eapply yearly_checks_not_defaulted_C_rights; eauto. unfold yearly_check, At; try omega.
+        assert (H' : (price + 0 = price + 0 * b2afee)); try omega.
+        rewrite H'. reflexivity.
+        omega. omega.
+  - not_or ctr CDSctr H4.
+  - not_or ctr CDSctr H4.
+  - ctr_case_analysis CDSctr ctr.
+    inversion_event InEv.
+    apply consistent_impl_exec in InCtr0; auto. contradiction.
+  - apply consistent_impl_exec in InCtr0; auto. contradiction. 
+Qed.
