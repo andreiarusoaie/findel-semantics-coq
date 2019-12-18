@@ -1,32 +1,5 @@
 Load metaproperties.
 
-Lemma helper_1 :
-  forall t y d, t > d -> d > 0 -> (t + y + d <? t) = false.
-Proof.
-  intros.
-  case_eq (t + y + d <? t); intros * H'; trivial.
-  apply ltb_sound_true in H'.
-  omega.
-Qed.
-
-Lemma helper_2 :
-  forall t y d,  y > d -> (t + y - d <? t) = false.
-Proof.
-  intros.
-  case_eq (t + y - d <? t); intros * H'; trivial.
-  apply ltb_sound_true in H'.
-  omega.
-Qed.
-
-Lemma in_smaller_list :
-  forall l x x', In x (rm x' l) -> In x l.
-Proof.
-  induction l; intros; simpl in *; trivial.
-  case_eq (ctr_eq_dec x' a); intros * H'; rewrite H' in H.
-  - subst. right. eapply IHl. eauto.
-  - contradiction.
-Qed.
-
 
 
 (*
@@ -102,6 +75,9 @@ Definition CDS (Alice C : Address)
   ).
 
 
+
+(* Helper definitions, tactics, and lemmas *)
+
 Definition is_executed (c : FinContract)
            (state1 state2 : State)
            (time : Time) :=
@@ -152,6 +128,57 @@ Hint Resolve global_time_is_bigger_than_delta : cds.
 Hint Constructors steps : cds.
 Hint Constructors step : cds.
 
+Lemma helper_1 :
+  forall t y d, t > d -> d > 0 -> (t + y + d <? t) = false.
+Proof.
+  intros.
+  case_eq (t + y + d <? t); intros * H'; trivial.
+  apply ltb_sound_true in H'.
+  omega.
+Qed.
+
+Lemma helper_2 :
+  forall t y d,  y > d -> (t + y - d <? t) = false.
+Proof.
+  intros.
+  case_eq (t + y - d <? t); intros * H'; trivial.
+  apply ltb_sound_true in H'.
+  omega.
+Qed.
+
+Lemma in_smaller_list :
+  forall l x x', In x (rm x' l) -> In x l.
+Proof.
+  induction l; intros; simpl in *; trivial.
+  case_eq (ctr_eq_dec x' a); intros * H'; rewrite H' in H.
+  - subst. right. eapply IHl. eauto.
+  - contradiction.
+Qed.
+
+Lemma h1 :
+  forall a b c d,
+    a + b - c >= d ->
+    a + b + c >= d.
+Proof.
+  intros.
+  omega.
+Qed.
+
+Lemma h2 :
+  forall a b b' c d,
+    a + b - c >= d ->
+    b' > b -> 
+    a + b' - c >= d.
+Proof.
+  intros.
+  omega.
+Qed.
+
+
+
+(***********************)
+(* Proofs for pay_at_t *)
+(***********************)
 Proposition pay_at_t_O_rights:
   forall s1 s2 c t I O addr sum c_id dsc_id response,
     c = finctr c_id dsc_id (pay_at_t t addr sum) I O O 1 ->
@@ -228,7 +255,14 @@ Proof.
 Qed.
 
 
-(* if defaulted then yearly_checks does not change the ledger *)
+
+
+
+(****************************)
+(* Proofs for yearly_checks *)
+(****************************)
+
+(* If defaulted then yearly_checks does not change the ledger *)
 Proposition yearly_checks_already_defaulted:
   forall s1 s2 c t t' I O addr sum c_id dsc_id response a2cfee b2afee i,
     c = finctr c_id dsc_id (yearly_check t t' addr sum b2afee a2cfee i) I O O 1 ->
@@ -353,44 +387,36 @@ Proof.
 Qed.
 
 
-Lemma h1 :
-  forall a b c d,
-    a + b - c >= d ->
-    a + b + c >= d.
-Proof.
-  intros.
-  omega.
-Qed.
 
-Lemma h2 :
-  forall a b b' c d,
-    a + b - c >= d ->
-    b' > b -> 
-    a + b' - c >= d.
-Proof.
-  intros.
-  omega.
-Qed.
-  
+(**********************************)
+(* Proofs for Credit Default Swap *)
+(**********************************)
 
-(* 
-CDS generates three subcontracts:
-
--> C1 - where Alice can request price + 2 * B2AliceFee from C if B defaults in the first year
--> C2 - where Alice can require price + 1 * B2AliceFee from C if B defaults in the second year
--> C3 - where Alice can require price + 0 * B2AliceFee from C if B defaults in the third year
-*) 
+ 
+(************************************************************)
+(* CDS generates three subcontracts C1 C2 C3, as follows:   *)
+(*                                                          *)
+(*   -> C1 - where Alice can request price + 2 * B2AliceFee *)
+(*                 from C if B defaults in the first year   *)
+(*   -> C2 - where Alice can request price + 1 * B2AliceFee *)
+(*                 from C if B defaults in the second year  *)
+(*   -> C3 - where Alice can request price + 0 * B2AliceFee *)
+(*           from C if B defaults in the third year         *)
+(************************************************************)
+ 
 
 
-(*
-Scenario: B defaults in the first year.
-Facts proved below:
-1. Alice receives price + 2 * B2AliceFee as specified by C1 
-2. C does not pay anyhting if Alice joins C2 or C3
-3. C receives Alice2CFee from Alice
-*)
 
-Proposition CDS_Y1_C1_Alice_is_paid_by_C :
+(*************************************************************************)
+(* Scenario 1: B defaults in the first year.                             *)
+(* Facts proved below:                                                   *)
+(* 1. CDS_Y1_C1: Alice receives price + 2 * B2AliceFee if Alice joins C1 *)
+(* 2. CDS_Y1_C2: ledger remains unchanged if Alice joins C2              *)
+(* 3. CDS_Y1_C3: ledger remains unchanged if Alice joins C3              *)
+(* 4. CDS_Y1_C: C receives the yealy fee from Alice if Alice joins CDS   *)
+(*************************************************************************)
+
+Proposition CDS_Y1_C1:
   forall CDSctr c' CDSctr_id dsc_id Alice C defaulted_addr
          price b2afee a2cfee s1 s2 s3 s4 now Y1 Y2 Y3,
     (* the execution of CDS generates 3 new contracts *)
@@ -410,14 +436,14 @@ Proposition CDS_Y1_C1_Alice_is_paid_by_C :
     query (m_gateway s3) defaulted_addr (now + Y1) = Some 1 ->
 
 
-    (* details *)
+    (* technical details *)
     Alice <> 0 ->
     now > Δ ->
     Y1 > Δ ->
     Y2 > Δ ->
     consistent_state s1 ->
 
-    (* If Alice joins C1, then Alice obtains the money *)
+    (* conclusion *)
     (ctr_primitive c' = pay_at_t (now + Y1) defaulted_addr (price + (2 * b2afee)) -> 
       exists tr,
         In tr (m_ledger s4) /\
@@ -458,8 +484,7 @@ Proof.
 Qed.
 
 
-(* Even if Alice joins C2 at Y2, the ledger is unchanged  *)
-Proposition CDS_Y1_C2_nobody_is_paid:
+Proposition CDS_Y1_C2:
   forall CDSctr c' CDSctr_id dsc_id Alice C defaulted_addr
          price b2afee a2cfee s1 s2 s3 s4 now Y1 Y2 Y3,
     (* the execution of CDS generates 3 new contracts *)
@@ -478,7 +503,7 @@ Proposition CDS_Y1_C2_nobody_is_paid:
     (* default after 1 year *)
     query (m_gateway s3) defaulted_addr (now + Y1) = Some 1 ->
 
-    (* details *)
+    (* technical details *)
     Alice <> 0 ->
     now > Δ ->
     Y1 > Δ ->
@@ -486,7 +511,7 @@ Proposition CDS_Y1_C2_nobody_is_paid:
     Y2 > Y1 ->
     consistent_state s1 ->
 
-    (* If Alice joins C2, the ledger remains unchanged *)
+    (* conclusion *)
     ( ctr_primitive c' = yearly_check (now + Y1) (now + Y2) defaulted_addr price b2afee a2cfee 1 ->
       m_ledger s3 = m_ledger s4
     ).
@@ -525,7 +550,7 @@ Proof.
   - simpl in InCtr. contradiction.
 Qed.
 
-Proposition CDS_Y1_Alice_is_not_paid_at_Y3:
+Proposition CDS_Y1_C3:
   forall CDSctr c' CDSctr_id dsc_id Alice C defaulted_addr
          price b2afee a2cfee s1 s2 s3 s4 now Y1 Y2 Y3,
     (* the execution of CDS generates 3 new contracts *)
@@ -544,7 +569,7 @@ Proposition CDS_Y1_Alice_is_not_paid_at_Y3:
     (* default after 1 year *)
     query (m_gateway s3) defaulted_addr (now + Y2) = Some 1 ->
 
-    (* details *)
+    (* technical details *)
     Alice <> 0 ->
     now > Δ ->
     Y1 > Δ ->
@@ -552,7 +577,7 @@ Proposition CDS_Y1_Alice_is_not_paid_at_Y3:
     Y3 > Y2 ->
     consistent_state s1 ->
 
-    (* If Alice joins C3, the ledger remains unchanged *)
+    (* conclusion *)
     (ctr_primitive c' = yearly_check (now + Y2) (now + Y3) defaulted_addr price b2afee a2cfee 0 ->
       m_ledger s3 = m_ledger s4
     ).
@@ -592,7 +617,7 @@ Proof.
 Qed.
 
 
-Proposition CDS_Y1_C_gets_paid :
+Proposition CDS_Y1_C :
   forall CDSctr CDSctr_id dsc_id Alice C defaulted_addr
          price b2afee a2cfee s1 s2 now Y1 Y2 Y3,
     (* the execution of CDS generates 3 new contracts *)
@@ -602,14 +627,14 @@ Proposition CDS_Y1_C_gets_paid :
                     C Alice Alice 1 ->
     is_executed CDSctr s1 s2 now -> 
 
-    (* details *)
+    (* technical details *)
     Alice <> 0 ->
     now > Δ ->
     Y1 > Δ ->
     Y2 > Δ ->
     consistent_state s1 ->
 
-    (* If Alice joins C1, then Alice pays C an yearly fee *)
+    (* conclusion *)
     (exists tr,
         In tr (m_ledger s2) /\
         tr_ctr_id tr = (ctr_id CDSctr) /\
@@ -642,56 +667,22 @@ Qed.
 
 
 
+(**************************************************************************)
+(* Scenario 2: B defaults in the second year.                             *)
+(* Facts proved below:                                                    *)
+(* 1. CDS_Y2_C1: ledger remains unchanged if Alice joins C1               *)
+(* 2. CDS_Y2_C2: if Alice joins C2 a new contract is generated, where:    *)
+(*                  i) Alice is the owner                                 *)
+(*                  ii) C is the issuer                                   *)
+(*                  iii) the primitive is pay_at_t                        *)
+(*                  iv) the value is price + b2afee                       *)
+(*       CDS_Y2_C2 and pay_at_t_O_rights ensure that Alice receives       *)
+(*       the payment price + b2afee from C, when B defaults after 2 years *)
+(* 3. CDS_Y2_C3: ledger remains unchanged if Alice joins C3               *)
+(* 4. CDS_Y2_C: C receives the yearly fee from Alice if Alice joins CDS   *)
+(*    Note: the yearly fee is generated by C2                             *)
+(**************************************************************************)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-(*
-Scenario: B defaults in the second year.
-Facts proved below:
-1. Alice receives price + 1 * B2AliceFee as specified by C2 
-2. C does not pay anyhting if Alice joins C1 or C3
-3. C receives 2 * Alice2CFee from Alice in two transactions
-*)
-
-(* If Alice joins C1, the ledger remains unchanged *)
 Proposition CDS_Y2_C1 :
   forall CDSctr c' CDSctr_id dsc_id Alice C defaulted_addr
          price b2afee a2cfee s1 s2 s3 s4 now Y1 Y2 Y3,
@@ -708,20 +699,20 @@ Proposition CDS_Y2_C1 :
     In c' (m_contracts s2) ->
     s2 ~~> s3 ->
     (forall t, t >= now + Y1 -> is_executed c' s3 s4 t) ->
-    (* still not defaulted *)
+    (* not defaulted after 1 year *)
     query (m_gateway s3) defaulted_addr (now + Y1) = Some 0 ->
     (* default after 2 years *)
     query (m_gateway s3) defaulted_addr (now + Y2) = Some 1 ->
 
 
-    (* details *)
+    (* technical details *)
     Alice <> 0 ->
     now > Δ ->
     Y1 > Δ ->
     Y2 > Δ ->
     consistent_state s1 ->
 
-    (* If Alice joins C1, nothing happens *)
+    (* conclusion *)
     (ctr_primitive c' = pay_at_t (now + Y1) defaulted_addr (price + (2 * b2afee)) -> 
      m_ledger s3 = m_ledger s4).
 Proof.
@@ -756,13 +747,6 @@ Proof.
 Qed.
 
 
-(*
-If Alice joins C2, a new contract is generated, where:
-1.  Alice is the owner
-2.  C is the issuer
-3. the primitive is pat_at_t
-4. the value of the contract is price + b2afee
-*)
 Proposition CDS_Y2_C2:
   forall CDSctr c' CDSctr_id dsc_id Alice C defaulted_addr
          price b2afee a2cfee s1 s2 s3 s4 now Y1 Y2 Y3,
@@ -779,13 +763,13 @@ Proposition CDS_Y2_C2:
     In c' (m_contracts s2) ->
     s2 ~~> s3 ->
     is_executed c' s3 s4 (now + Y1) ->
-    (* still not defaulted *)
+    (* not defaulted after 1 year *)
     query (m_gateway s3) defaulted_addr (now + Y1) = Some 0 ->
     (* default after 2 years *)
     query (m_gateway s3) defaulted_addr (now + Y2) = Some 1 ->
 
 
-    (* details *)
+    (* technical details *)
     Alice <> 0 ->
     now > Δ ->
     Y1 > Δ ->
@@ -793,7 +777,7 @@ Proposition CDS_Y2_C2:
     Y2 -Y1 > Δ ->
     consistent_state s1 ->
 
-    (* If Alice joins C2, then a contract is generated *)
+    (* conclusion *)
     (ctr_primitive c' = yearly_check (now + Y1) (now + Y2)
                                      defaulted_addr price b2afee a2cfee 1  ->
      (exists ctr,
@@ -858,7 +842,7 @@ Proposition CDS_Y2_C3:
     query (m_gateway s3) defaulted_addr (now + Y2) = Some 1 ->
 
 
-    (* details *)
+    (* technical details *)
     Alice <> 0 ->
     now > Δ ->
     Y1 > Δ ->
@@ -866,7 +850,7 @@ Proposition CDS_Y2_C3:
     Y3 - Y2 > Δ ->
     consistent_state s1 ->
 
-    (* If Alice joins C2, then a contract is generated *)
+    (* conclusion *)
     (ctr_primitive c' = yearly_check (now + Y2) (now + Y3)
                                      defaulted_addr price b2afee a2cfee 1  ->
       m_ledger s3 = m_ledger s4
@@ -907,7 +891,7 @@ Proof.
 Qed.
 
 
-Proposition CDS_Y2_C_gets_paid :
+Proposition CDS_Y2_C :
   forall CDSctr CDSctr_id dsc_id Alice C defaulted_addr
          price c' b2afee a2cfee s1 s2 s3 s4 now Y1 Y2 Y3,
     (* the execution of CDS generates 3 new contracts *)
@@ -923,13 +907,13 @@ Proposition CDS_Y2_C_gets_paid :
     In c' (m_contracts s2) ->
     s2 ~~> s3 ->
     is_executed c' s3 s4 (now + Y1) ->
-    (* still not defaulted *)
+    (* not defaulted after 1 year *)
     query (m_gateway s3) defaulted_addr (now + Y1) = Some 0 ->
     (* default after 2 years *)
     query (m_gateway s3) defaulted_addr (now + Y2) = Some 1 ->
 
 
-    (* details *)
+    (* technical details *)
     Alice <> 0 ->
     now > Δ ->
     Y1 > Δ ->
@@ -937,7 +921,7 @@ Proposition CDS_Y2_C_gets_paid :
     Y2 - Y1 > Δ ->
     consistent_state s1 ->
 
-    (* If Alice joins C2, then she pays a second fee to C *)
+    (* conclusion *)
     (ctr_primitive c' = yearly_check (now + Y1) (now + Y2)
                                      defaulted_addr price b2afee a2cfee 1  ->
      (exists tr,
@@ -988,6 +972,21 @@ Qed.
 
 
 
+)
+Scenario 2: B defaults in the second year.
+Facts proved below:
+1. CDS_Y3_C1: ledger remains unchanged if Alice joins C1
+2. CDS_Y3_C3: ledger remains unchanged if Alice joins C3
+3. CDS_Y3_C2: if Alice joins C2 a new contract is generated, where:
+                 i) Alice is the owner
+                 ii) C is the issuer
+                 iii) the primitive is pay_at_t
+                 iv) the value is price + b2afee
+      CDS_Y2_C2 and pay_at_t_O_rights ensure that Alice receives
+      the payment price + b2afee from C, when B defaults after 2 years
+4. CDS_32_C: C receives the yearly fee from Alice if Alice joins CDS
+   Note: the yearly fee is generated by C2
+)
 
 (*
 Scenario 3: B defaults in the third year.
@@ -1188,7 +1187,7 @@ Proposition CDS_Y3_C3:
     query (m_gateway s3) defaulted_addr (now + Y3) = Some 1 ->
 
 
-    (* details *)
+    (* technical details *)
     Alice <> 0 ->
     now > Δ ->
     Y1 > Δ ->
@@ -1196,7 +1195,7 @@ Proposition CDS_Y3_C3:
     Y3 - Y2 > Δ ->
     consistent_state s1 ->
 
-    (* If Alice joins C3, then a contract is generated *)
+    (* conclusion *)
     (ctr_primitive c' = yearly_check (now + Y2) (now + Y3)
                                      defaulted_addr price b2afee a2cfee 1  ->
      (exists ctr,
