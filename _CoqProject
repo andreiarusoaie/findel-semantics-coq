@@ -7,5 +7,6 @@ proofs/external_rate_currency_exchange.v
 proofs/zero_coupon_bond.v
 proofs/option_derivative.v
 proofs/correct_option_derivative.v
+proofs/credit_default_swap.v
 -I tests/
 tests/tests.v
