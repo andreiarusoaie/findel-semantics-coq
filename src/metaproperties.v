@@ -352,10 +352,16 @@ Proof.
     case_eq (n =? 0); intros H'; rewrite H' in H2.
     + eapply IHP2; eauto.
     + eapply IHP1; eauto.
-  - case_if H1.
-    case_if H2.
-    + eapply IHP; eauto.
-    + exists []. simpl; auto.
+  - destruct t.
+    + case_if H1.
+      case_if H2.
+      * eapply IHP; eauto.
+      * exists []. simpl; auto.
+    + case_if H1.
+      * eapply IHP; eauto.
+      * exists []. simpl; auto.
+    + case_if H1.
+      eapply IHP; eauto.
 Qed.
 
 (* execute does not remove transactions from the ledger *)
@@ -495,10 +501,13 @@ Proof.
     case_eq (n =? 0); intros H0; rewrite H0 in H2.
     + eapply IHP2; eauto.
     + eapply IHP1; eauto.
-  - case_if H1.
-    case_if H2.
-    + eapply IHP; eauto.
-    + subst. omega.
+  - destruct t.
+    case_if H1.
+    case_if H2; try omega; try eapply IHP; eauto.
+    + case_if H1; try omega.
+      eapply IHP; eauto.
+    + case_if H1.
+      eapply IHP; eauto.
 Qed.
 
 
@@ -646,13 +655,18 @@ Proof.
     case_if H4.
     + eapply IHP2; eauto.
     + eapply IHP1; eauto.
-  - case_if H3.
-    case_if H4.
-    + eapply IHP; eauto.
-    + subst. simpl in *.
-      destruct H1 as [H1 | H1]; try contradiction.
-      subst. simpl in *.
-      omega.
+  - destruct t.
+    + case_if H3.
+      case_if H4.
+      * eapply IHP; eauto.
+      * subst ctrs'. simpl in H1. destruct H1 as [H1 | H1]; try contradiction.
+        subst. simpl. omega.
+    + case_if H3.
+      * eapply IHP; eauto.
+      * subst ctrs'. simpl in H1. destruct H1 as [H1 | H1]; try contradiction.
+        subst. simpl. omega.
+    + case_if H3. 
+      * eapply IHP; eauto.      
 Qed.
 
 
