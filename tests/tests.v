@@ -98,7 +98,7 @@ Definition T8_complex_scale_obs (g g' : Gateway) :=
          )
   ).
 Definition T9_timebound (g : Gateway) (t0 t1 : nat) :=
-  (Timebound t0 t1
+  (Timebound (interval t0 t1)
              (ScaleObs (gtw_addr g)
                        (Give (Or
                                 (Scale 5 (One USD))
