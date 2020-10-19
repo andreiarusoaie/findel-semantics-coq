@@ -17,11 +17,11 @@ Definition emptybal : Address -> Currency -> Z :=
 Definition alice_bal_usd :=
   update emptybal Alice USD 100.
 Definition alice_bal_eur :=
-  update alice_bal_usd Alice EUR 50.
+  update alice_bal_usd Alice EUR 100.
 Definition bob_bal_usd :=
-  update alice_bal_eur Bob USD 20.
+  update alice_bal_eur Bob USD 100.
 Definition bob_bal_eur :=
-  update bob_bal_usd Bob EUR 30.
+  update bob_bal_usd Bob EUR 100.
 Definition default_balance := bob_bal_eur.
 
 Eval compute in default_balance Bob USD.
@@ -30,6 +30,20 @@ Eval compute in default_balance Alice USD.
 Eval compute in default_balance Alice EUR.
 
 Definition default_exec (p : Primitive) :=
+  (execute
+     p
+     default_scale
+     Alice
+     Bob
+     default_balance
+     now
+     default_gateway
+     default_ctr_id
+     default_desc_id
+     fresh_id
+     default_ledger).
+
+Definition default_exec_at (p : Primitive) (now : Time) :=
   (execute
      p
      default_scale
@@ -64,14 +78,14 @@ Definition T2_simple_currency_exchange :=
      (Give (Scale 11 (One USD)))
      (Scale 10 (One EUR))
   ).
-Definition T3_zcb := (At (now + 1) (Scale 10 (One USD))).
+Definition T3_zcb := (At (now + 60) (Scale 10 (One USD))).
 Definition T4_bond_with_2_coupons :=
   (And
      (And
-        (At (now + 1) (One USD))
-        (At (now + 2) (One EUR))
+        (At (now + 60) (One USD))
+        (At (now + 120) (One EUR))
      )
-     (At (now + 3) (Scale 5 (One USD)))
+     (At (now + 180) (Scale 5 (One USD)))
   ).
 Definition T5_european_option :=
   (At (now + 1) (Or (One USD) (One EUR))).
@@ -166,6 +180,7 @@ Eval compute in
 
 
 Eval compute in default_exec T3_zcb.
+(* time = now *)
 Eval compute in
     (match default_exec T3_zcb with
      | None => 0%Z
@@ -182,6 +197,138 @@ Eval compute in
                    end
      end
     ).
+
+(* time = now + 1 minute *)
+(* the balance changes *)
+Eval compute in default_exec_at T3_zcb (now + 60).
+Eval compute in
+    (match default_exec_at T3_zcb (now + 60) with
+     | None => 0%Z
+     | Some res => match res with
+                     result bal _ _ _ => bal Bob USD
+                   end
+     end
+    ).
+Eval compute in
+    (match default_exec_at T3_zcb (now + 60) with
+     | None => 0%Z
+     | Some res => match res with
+                     result bal _ _ _ => bal Alice USD
+                   end
+     end
+    ).
+
+
+
+Print T4_bond_with_2_coupons.
+(* time = now *)
+Eval compute in default_exec T4_bond_with_2_coupons.
+Eval compute in
+    (match default_exec T4_bond_with_2_coupons with
+     | None => 0%Z
+     | Some res => match res with
+                     result bal _ _ _ => bal Bob USD
+                   end
+     end
+    ).
+Eval compute in
+    (match default_exec T4_bond_with_2_coupons with
+     | None => 0%Z
+     | Some res => match res with
+                     result bal _ _ _ => bal Alice USD
+                   end
+     end
+    ).
+Eval compute in
+    (match default_exec T4_bond_with_2_coupons with
+     | None => 0%Z
+     | Some res => match res with
+                     result bal _ _ _ => bal Bob EUR
+                   end
+     end
+    ).
+Eval compute in
+    (match default_exec T4_bond_with_2_coupons with
+     | None => 0%Z
+     | Some res => match res with
+                     result bal _ _ _ => bal Alice EUR
+                   end
+     end
+    ).
+
+
+(* time = now + 2 minutes *)
+Eval compute in default_exec_at T4_bond_with_2_coupons (now + 120).
+Eval compute in
+    (match default_exec_at T4_bond_with_2_coupons (now + 120) with
+     | None => 0%Z
+     | Some res => match res with
+                     result bal _ _ _ => bal Bob USD
+                   end
+     end
+    ).
+Eval compute in
+    (match default_exec_at T4_bond_with_2_coupons (now + 120) with
+     | None => 0%Z
+     | Some res => match res with
+                     result bal _ _ _ => bal Alice USD
+                   end
+     end
+    ).
+Eval compute in
+    (match default_exec_at T4_bond_with_2_coupons (now + 120) with
+     | None => 0%Z
+     | Some res => match res with
+                     result bal _ _ _ => bal Bob EUR
+                   end
+     end
+    ).
+Eval compute in
+    (match default_exec_at T4_bond_with_2_coupons (now + 120) with
+     | None => 0%Z
+     | Some res => match res with
+                     result bal _ _ _ => bal Alice EUR
+                   end
+     end
+    ).
+
+
+(* time = now + 3 minutes *)
+Eval compute in default_exec_at T4_bond_with_2_coupons (now + 180).
+Eval compute in
+    (match default_exec_at T4_bond_with_2_coupons (now + 180) with
+     | None => 0%Z
+     | Some res => match res with
+                     result bal _ _ _ => bal Bob USD
+                   end
+     end
+    ).
+Eval compute in
+    (match default_exec_at T4_bond_with_2_coupons (now + 180) with
+     | None => 0%Z
+     | Some res => match res with
+                     result bal _ _ _ => bal Alice USD
+                   end
+     end
+    ).
+Eval compute in
+    (match default_exec_at T4_bond_with_2_coupons (now + 180) with
+     | None => 0%Z
+     | Some res => match res with
+                     result bal _ _ _ => bal Bob EUR
+                   end
+     end
+    ).
+Eval compute in
+    (match default_exec_at T4_bond_with_2_coupons (now + 180) with
+     | None => 0%Z
+     | Some res => match res with
+                     result bal _ _ _ => bal Alice EUR
+                   end
+     end
+    ).
+
+
 
 
 Eval compute in default_exec T5_european_option.
@@ -201,6 +348,9 @@ Eval compute in
                    end
      end
     ).
+
+
+
 Eval compute in
     (match default_exec T5_european_option with
      | None => 0%Z
