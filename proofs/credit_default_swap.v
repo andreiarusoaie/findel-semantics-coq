@@ -157,16 +157,16 @@ Lemma helper_1 :
 Proof.
   intros.
   case_eq (t + y + d <? t); intros * H'; trivial.
-  apply ltb_sound_true in H'.
+  apply leb_sound_true in H'.
   omega.
 Qed.
 
 Lemma helper_2 :
-  forall t y d,  y > d -> (t + y - d <? t) = false.
+  forall t y d,  y > d -> (t + y - d <=? t) = false.
 Proof.
   intros.
-  case_eq (t + y - d <? t); intros * H'; trivial.
-  apply ltb_sound_true in H'.
+  case_eq (t + y - d <=? t); intros * H'; trivial.
+  apply leb_sound_true in H'.
   omega.
 Qed.
 
@@ -258,7 +258,7 @@ Proof.
       * simpl. left. eauto.
       * repeat split; simpl; trivial.
         resolve_owner H0. omega.
-    + subst t. apply ltb_sound_false in H5. contradict H5.
+    + subst t. apply leb_sound_false in H5. contradict H5.
       assert (H' : m_global_time s1 > Δ).
       apply global_time_is_bigger_than_delta. 
       unfold Δ. omega.
@@ -289,7 +289,7 @@ Proof.
     + subst t.
       rewrite Q in H10. simpl in *.
       inversion H10. trivial.
-    + subst t. apply ltb_sound_false in H5. contradict H5.
+    + subst t. apply leb_sound_false in H5. contradict H5.
       assert (H' : m_global_time s1 > Δ).
       apply global_time_is_bigger_than_delta. 
       unfold Δ. omega.
@@ -367,13 +367,13 @@ Proof.
       case_match H10.
       case_if H8.
       case_if H12.
-      * apply ltb_sound_true in H8. contradict H8. omega.
+      * apply leb_sound_true in H8. contradict H8. omega.
       * destruct r. inversion H13. clear H13. subst.
         inversion H11. clear H11.
         eexists. split.
         apply in_app_iff. right. simpl. left. trivial.
         repeat split; trivial. resolve_owner H0.
-    + apply ltb_sound_false in H5. contradict H5. unfold Δ. omega.
+    + apply leb_sound_false in H5. contradict H5. unfold Δ. omega.
   - not_or c ctr H2.
   - not_or c ctr H2.
   - ctr_case_analysis c ctr. inversion_event InEv. find_contradiction InEv.
@@ -423,7 +423,7 @@ Proof.
         repeat split; auto.
         simpl. resolve_owner H0.
         simpl. omega.
-    + apply ltb_sound_false in H5. contradict H5. unfold Δ. omega.
+    + apply leb_sound_false in H5. contradict H5. unfold Δ. omega.
   - not_or c ctr H2.
   - not_or c ctr H2.
   - ctr_case_analysis c ctr. inversion_event InEv. find_contradiction InEv.
@@ -505,7 +505,7 @@ Proof.
     apply consistent_impl_exec in InCtr0; auto. contradiction.
   - ctr_case_analysis CDSctr ctr. clear H8.
     execute_own CDSctr H7. simpl in *.
-    subst now.
+    subst now. 
     rewrite helper_1, helper_2 in H7; unfold Δ; try auto; try omega.
     rewrite helper_1, helper_2 in H7; unfold Δ; try auto; try omega.
     inversion H7. clear H7. subst.

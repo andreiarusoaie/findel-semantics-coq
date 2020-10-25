@@ -92,7 +92,7 @@ Proof.
         ** eapply steps_does_not_remove_transactions; eauto.
            subst ledger'. simpl. left. eauto.
       ** repeat split; trivial. resolve_owner H5.
-      * eapply ltb_sound_false in H10. contradict H10. rewrite <- T. unfold Δ. omega.
+      * eapply leb_sound_false in H10. contradict H10. rewrite <- T. unfold Δ. omega.
     + not_or ctr ctr0 H7.
     + not_or ctr ctr0 H7.
     + ctr_case_analysis ctr ctr0. inversion_event Ev. find_contradiction M.
@@ -236,7 +236,7 @@ Proof.
       case_analysis H12.
       case_analysis H15.
       * rewrite <- T0 in *.
-        apply ltb_sound_true in H12.
+        apply leb_sound_true in H12.
         apply ltb_sound_false in H0.
         contradict H0. unfold Δ. omega.
       * simpl in *. 

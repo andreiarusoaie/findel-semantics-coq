@@ -193,7 +193,7 @@ Fixpoint execute
     if (t1 <? time)
     then None
     else
-      if (t0 <? time)
+      if (t0 <=? time)
       then (execute p scale I O balance time gtw ctr_id dsc_id nextId ledger)
       else Some (result balance
                         [(finctr (S nextId) dsc_id (Timebound (interval t0 t1) p) I O O scale)] (S (S nextId)) ledger)
