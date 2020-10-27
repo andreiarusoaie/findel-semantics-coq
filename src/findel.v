@@ -46,7 +46,7 @@ Definition update (balance : Balance) (a : Address)
     then amount
     else (balance x y).
 
-
+Scheme Equality for TimeInterval.
 Inductive Primitive :=
 (* basic primitives *)
 | Zero      :                                      Primitive
@@ -59,7 +59,7 @@ Inductive Primitive :=
 | Or        : Primitive -> Primitive ->            Primitive
 | If        : Address -> Primitive -> Primitive -> Primitive
 | Timebound : TimeInterval -> Primitive ->         Primitive.
-
+Scheme Equality for Primitive.
 Definition At (t : nat) (p : Primitive) := Timebound (interval (t - Δ) (t + Δ)) p.
 Definition Before (t : nat) (p : Primitive) := Timebound (before t) p.
 Definition After (t : nat) (p : Primitive) := Timebound (after t) p.
@@ -273,7 +273,10 @@ A Findel contract has the following execution model~\cite{findel}:
 
 *)
 
-Axiom ctr_eq_dec : forall c c' : FinContract, {c = c'} + {c <> c}.
+Definition ctr_eq_dec : forall c c' : FinContract, {c = c'} + {c <> c'}.
+Proof.
+  decide equality; try decide equality; try decide equality; try decide equality.
+Qed.
 
 Fixpoint rm (c : FinContract) (l : list FinContract) :=
   match l with

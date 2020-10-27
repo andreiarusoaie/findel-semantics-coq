@@ -473,11 +473,13 @@ Lemma rm_in:
 Proof.
   induction cs; intros; simpl in *; try contradiction.
   case_eq (ctr_eq_dec c a); intros H0 H'; rewrite H' in H; try contradiction.
-  subst c. eapply IHcs; eauto.
+  - apply IHcs in H. trivial.
+  - simpl in H. destruct H as [H | H]; subst; try contradiction.
+    eapply IHcs; eauto.
 Qed.
 
 
-Lemma execute_produces_new_ids:
+Lemma execute_produces_new_id:
   forall P sc I O bal time gtw c_id dsc_id bal' ctrs' next_id' L' next_id L,
     execute P sc I O bal  time gtw c_id dsc_id next_id L = Some (result bal' ctrs' next_id' L') ->
     next_id' >= next_id.
@@ -502,14 +504,68 @@ Proof.
     + eapply IHP2; eauto.
     + eapply IHP1; eauto.
   - destruct t.
-    case_if H1.
-    case_if H2; try omega; try eapply IHP; eauto.
+      case_if H1.
+      case_if H2; try omega; try eapply IHP; eauto.
     + case_if H1; try omega.
       eapply IHP; eauto.
     + case_if H1.
       eapply IHP; eauto.
 Qed.
 
+Lemma execute_produces_new_ids:
+  forall P sc I O bal time gtw c_id dsc_id bal' ctrs' next_id' L' next_id L,
+    execute P sc I O bal  time gtw c_id dsc_id next_id L = Some (result bal' ctrs' next_id' L') ->
+    (forall c, In c ctrs' -> next_id' > ctr_id c).
+Proof.
+  intros P. induction P; intros; simpl in H; inversion H; clear H.
+  - subst ctrs'. try contradiction.
+  - subst ctrs'. try contradiction.
+  - eapply IHP in H2; eauto.
+  - case_match H2.
+    eapply IHP in H3; eauto.
+  - eapply IHP in H2; eauto.
+  - case_match H2. destruct r.
+    case_match H3. destruct r.
+    inversion H4. clear H4. subst.
+    rewrite in_app_iff in H0. destruct H0 as [H0 | H0].
+    + (* assert (H' : forall c', In c' res_contracts0 -> res_next0 > ctr_id c'). *)
+      apply IHP1 with (c := c) in H; auto.
+      apply execute_produces_new_id in H1. omega.
+    + apply IHP2 with (c := c) in H1; auto. 
+  - subst. simpl in H0. destruct H0 as [H0 | H0].
+    + subst c. simpl. omega.
+    + contradiction.
+  - case_match H2.
+    case_eq (n =? 0); intros H'; rewrite H' in H3.
+    + eapply IHP2 in H3; eauto.
+    + eapply IHP1 in H3; eauto.
+  - destruct t.
+    + case_if H1.
+      case_if H2.
+      try eapply IHP; eauto.
+      subst ctrs'. simpl in H0. destruct H0 as [H0 | H0]; try contradiction.
+      subst c. simpl. omega.
+    + case_if H2. 
+      try eapply IHP; eauto.
+      subst ctrs'. simpl in H0. destruct H0 as [H0 | H0]; try contradiction.
+      subst c. simpl. omega.
+    + case_if H2.
+      try eapply IHP; eauto.
+Qed.    
+
+
+Lemma incl_rm : forall S x y, x <> y -> In x (rm y S) -> In x S.
+Proof.
+  induction S.
+  - simpl. intros. trivial.
+  - intros.
+    simpl in H0.
+    case_eq (ctr_eq_dec y a); intros He H'; rewrite H' in H0. subst.
+    + simpl. right. eapply IHS; eauto.
+    + simpl in H0. destruct H0 as [H0 | H0]; subst.
+      * simpl. left. reflexivity.
+      * simpl. right. eapply IHS; eauto.
+Qed.
 
 Lemma step_preserves_consistent_state_1:
   forall s s',
@@ -524,32 +580,31 @@ Proof.
   - destruct H1 as [H1 | H1].
     + subst. simpl in *. omega.
     + apply H0 in H1. omega.
-  - case_eq (ctr_eq_dec ctr ctr0); intros; try contradiction.
-    subst ctr0.
-    apply in_app_iff in H1.
-    destruct H1 as [H1 | H1].
-    + exfalso. eapply rm_in. exact H1.
-    + apply execute_produces_new_ids in H7.
-      apply H0 in H.
-      omega.
-  - case_eq (ctr_eq_dec ctr ctr0); intros; try contradiction.
-    subst ctr0.
-    apply in_app_iff in H1.
-    destruct H1 as [H1 | H1].
-    + exfalso. eapply rm_in. exact H1.
-    + apply execute_produces_new_ids in H7.
-      apply H0 in H.
-      omega.
-  - case_eq (ctr_eq_dec ctr ctr0); intros; try contradiction.
-    subst ctr0.
-    apply in_app_iff in H1.
-    destruct H1 as [H1 | H1].
-    + exfalso. eapply rm_in. exact H1.
-    + apply execute_produces_new_ids in H7.
-      apply H0 in H.
-      omega.
-  - case_eq (ctr_eq_dec ctr ctr0); intros; try contradiction.
-    subst ctr0. auto.
+  - simpl in H1. rewrite in_app_iff in H1. destruct H1 as [H1 | H1].
+    + case_eq (ctr_eq_dec ctr ctr0); intros; try contradiction.
+      * subst ctr0. exfalso. eapply rm_in. exact H1.
+      * apply incl_rm in H1; eauto. apply H0 in H1.
+        apply execute_produces_new_id in H7.
+        omega.
+    + eapply execute_produces_new_ids in H7; eauto.
+  - simpl in H1. rewrite in_app_iff in H1. destruct H1 as [H1 | H1].
+    + case_eq (ctr_eq_dec ctr ctr0); intros; try contradiction.
+      * subst ctr0. exfalso. eapply rm_in. exact H1.
+      * apply incl_rm in H1; eauto. apply H0 in H1.
+        apply execute_produces_new_id in H7.
+        omega.
+    + eapply execute_produces_new_ids in H7; eauto.
+  - simpl in H1. rewrite in_app_iff in H1. destruct H1 as [H1 | H1].
+    + case_eq (ctr_eq_dec ctr ctr0); intros; try contradiction.
+      * subst ctr0. exfalso. eapply rm_in. exact H1.
+      * apply incl_rm in H1; eauto. apply H0 in H1.
+        apply execute_produces_new_id in H7.
+        omega.
+    + eapply execute_produces_new_ids in H7; eauto.
+  - apply H0.
+    case_eq (ctr_eq_dec ctr ctr0); intros; try contradiction.
+      * subst ctr0. exfalso. eapply rm_in. exact H1.
+      * apply incl_rm in H1; auto.
 Qed.
 
 
@@ -565,27 +620,27 @@ Lemma step_preserves_consistent_state_2:
   induction H; subst s'; simpl in *; auto.
   - destruct H1 as [[H1 | H1] | [H1 | H1]]; try inversion H1; assert (H'' : m_fresh_id s > c_id); auto.
   - destruct H1 as [[H1 | H1] | [H1 | H1]]; try inversion H1; subst.
-    + apply execute_produces_new_ids in H7; apply H0 in H. omega.
-    + apply execute_produces_new_ids in H7.
+    + apply execute_produces_new_id in H7; apply H0 in H. omega.
+    + apply execute_produces_new_id in H7.
       assert (H'' : m_fresh_id s > c_id); auto.
       omega.
-    + apply execute_produces_new_ids in H7.
-      assert (H'' : m_fresh_id s > c_id); auto.
-      omega.
-  - destruct H1 as [[H1 | H1] | [H1 | H1]]; try inversion H1; subst.
-    + apply execute_produces_new_ids in H7; apply H0 in H. omega.
-    + apply execute_produces_new_ids in H7.
-      assert (H'' : m_fresh_id s > c_id); auto.
-      omega.
-    + apply execute_produces_new_ids in H7.
+    + apply execute_produces_new_id in H7.
       assert (H'' : m_fresh_id s > c_id); auto.
       omega.
   - destruct H1 as [[H1 | H1] | [H1 | H1]]; try inversion H1; subst.
-    + apply execute_produces_new_ids in H7; apply H0 in H. omega.
-    + apply execute_produces_new_ids in H7.
+    + apply execute_produces_new_id in H7; apply H0 in H. omega.
+    + apply execute_produces_new_id in H7.
       assert (H'' : m_fresh_id s > c_id); auto.
       omega.
-    + apply execute_produces_new_ids in H7.
+    + apply execute_produces_new_id in H7.
+      assert (H'' : m_fresh_id s > c_id); auto.
+      omega.
+  - destruct H1 as [[H1 | H1] | [H1 | H1]]; try inversion H1; subst.
+    + apply execute_produces_new_id in H7; apply H0 in H. omega.
+    + apply execute_produces_new_id in H7.
+      assert (H'' : m_fresh_id s > c_id); auto.
+      omega.
+    + apply execute_produces_new_id in H7.
       assert (H'' : m_fresh_id s > c_id); auto.
       omega.
   - apply H0 in H. 
@@ -609,10 +664,23 @@ Lemma step_preserves_consistent_state_3:
 Proof.
   intros.
   destruct H0 as [H0 [He [H' [T P]]]].
-  induction H; subst s'; simpl in *; try case_eq_dec_ctr ctr ctr' ctr0.
-  - case_eq_dec_ctr ctr ctr' new_contract.
-  - apply H'; auto.
-Qed.
+  induction H; subst s'; simpl in *.
+  - destruct H1 as [H1 | H1]; destruct H2 as [H2 | H2]; try subst; trivial.
+    + simpl in *. apply H0 in H2. omega.
+    + simpl in *. apply H0 in H1. omega.
+    + apply H'; auto.
+  - rewrite in_app_iff in H1, H2.
+    + destruct H1 as [H1 | H1]; destruct H2 as [H2 | H2].
+      * case_eq (ctr_eq_dec ctr ctr0); intros Hi.
+        ** subst. apply rm_in in H1. contradiction.
+        ** case_eq (ctr_eq_dec ctr' ctr0); intros Hi'.
+           subst. apply rm_in in H2. contradiction.
+           intros _ _.
+           apply incl_rm in H1; trivial.
+           apply incl_rm in H2; trivial.
+           apply H'; auto.
+      * admit.
+Admitted.
 
 Ltac contradict_unfold :=
   let He := fresh "H" in
@@ -645,8 +713,8 @@ Proof.
     destruct H1 as [H1 | H1].
     + eapply IHP1; eauto.
     + eapply IHP2; eauto.
-      apply execute_produces_new_ids in H.
-      apply execute_produces_new_ids in H2.
+      apply execute_produces_new_id in H.
+      apply execute_produces_new_id in H2.
       subst. omega.
   - subst ctrs'. simpl in *.
     destruct H1 as [H1 | H1]; auto.
@@ -666,7 +734,7 @@ Proof.
       * subst ctrs'. simpl in H1. destruct H1 as [H1 | H1]; try contradiction.
         subst. simpl. omega.
     + case_if H3. 
-      * eapply IHP; eauto.      
+      * eapply IHP; eauto.
 Qed.
 
 
@@ -709,6 +777,7 @@ Proof.
     + destruct H9 as [H9 | H9]; try inversion H9.
       apply T in H.
       destruct H as [_ H]; try contradiction.
+    + admit.
   - case_eq (ctr_eq_dec ctr ctr0); intros; try contradiction.
     subst ctr0.
     unfold not; split; intros.
@@ -725,6 +794,7 @@ Proof.
     + destruct H9 as [H9 | H9]; try inversion H9.
       apply T in H.
       destruct H as [_ H]; try contradiction.
+    + admit.
   - case_eq (ctr_eq_dec ctr ctr0); intros; try contradiction.
     subst ctr0.
     unfold not; split; intros.
@@ -741,11 +811,13 @@ Proof.
     + destruct H9 as [H9 | H9]; try inversion H9.
       apply T in H.
       destruct H as [_ H]; try contradiction.
+    + admit.
   - case_eq (ctr_eq_dec ctr ctr0); intros; try contradiction.
     subst ctr0.
     split; unfold not; intros; eapply rm_in; eauto.
+    admit.
   - apply T; auto.
-Qed.
+Admitted.
 
 
 Lemma step_preserves_consistent_state_5:
@@ -862,13 +934,13 @@ Proof.
     contradiction.
   - case_eq (ctr_eq_dec c ctr); intros.
     + subst. simpl. left. left. trivial.
-    + contradiction.
+    + admit.
   - case_eq (ctr_eq_dec c ctr); intros.
     + subst. simpl. left. left. trivial.
-    + contradiction.
+    + admit. 
   - case_eq (ctr_eq_dec c ctr); intros.
     + subst. simpl. left. left. trivial.
-    + contradiction.
+    + admit.
   - simpl. right. unfold not. intros.
     destruct H6 as [H6 | H6]; try inversion H6.
     unfold consistent_state in H0.
@@ -882,7 +954,7 @@ Proof.
     apply H'' in H1.
     destruct H1 as [H1 H1'].
     trivial.
-Qed.
+Admitted.
 
 (* Metaproperties about state consistency *)
 
@@ -907,18 +979,18 @@ Proof.
   - subst s'. simpl.
     case_eq (ctr_eq_dec ctr0 ctr); intros.
     + subst ctr0. right. left. left. trivial.
-    + contradiction.
+    + admit.
   - case_eq (ctr_eq_dec ctr0 ctr); intros.
     + subst. right. left. simpl. left. trivial.
-    + contradiction.
+    + admit.
   - case_eq (ctr_eq_dec ctr0 ctr); intros.
     + subst. right. left. simpl. left. trivial.
-    + contradiction.
+    + admit.
   - case_eq (ctr_eq_dec ctr0 ctr); intros.
     + subst. right. right. simpl. left. trivial.
-    + contradiction.
+    + admit.
   - subst s'. simpl. left. trivial.
-Qed.
+Admitted.
 
 Theorem steps_effect_over_contract:
   forall ctr s s',
@@ -1069,23 +1141,26 @@ Proof.
     destruct H0 as [H0 | H0].
     + eexists. eexists. subst. exact H5.
     + exists owner. eexists; eauto.
+    + admit.
   - case_eq (ctr_eq_dec ctr ctr0); intros; try contradiction.
     subst. rewrite H2. simpl. eexists; eexists; eauto.
-    Unshelve. apply owner.
+    Unshelve. admit.
+    admit.
   - case_eq (ctr_eq_dec ctr ctr0); intros; try contradiction.
     subst. rewrite H2. simpl. eexists. eexists. eauto.
-    Unshelve. apply owner.
+    Unshelve. admit. admit. 
   - case_eq (ctr_eq_dec ctr ctr0); intros; try contradiction.
     destruct H7 as [H7 | H7]; try inversion H7.
     destruct H5 as [_ [_ [_[H5 _]]]].
     apply H5 in H.
     destruct H as [H _].
     subst. contradiction.
+    admit.
   - destruct H0 as [_ [_ [_[H0 _]]]].
     apply H0 in H1.
     destruct H1 as [H1 _].
     subst. contradiction.
-Qed.
+Admitted.
 
 
 Theorem step_does_not_remove_events:
