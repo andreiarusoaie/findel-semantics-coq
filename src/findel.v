@@ -18,7 +18,18 @@ Inductive Currency :=
 | CNY  : Currency
 | SGD  : Currency
 | NONE : Currency.
-Scheme Equality for Currency.
+Definition beq_currency (c c' : Currency) :=
+  match c, c' with
+  | USD , USD  => true
+  | EUR , EUR  => true
+  | GBP , GBP  => true
+  | JPY , JPY  => true
+  | CNY , CNY  => true
+  | SGD , SGD  => true
+  | NONE, NONE => true
+  | _, _ => false
+  end.
+
 
 Definition Address := nat. (* convention: 0 stands for 0x0 *)
 Definition Time := nat.
@@ -26,22 +37,12 @@ Inductive TimeInterval :=
 | interval : nat -> nat -> TimeInterval
 | after : nat -> TimeInterval
 | before : nat -> TimeInterval.
-Scheme Equality for TimeInterval.
-
-Open Scope bool_scope.
-Definition interval_eq_dec (i1 i2 : TimeInterval) :=
-  match i1, i2 with
-  | interval t0 t1, interval t0' t1' => (t0 =? t0') && (t1 =? t1')
-  | after t, after t' => t =? t'
-  | before t, before t' => t =? t'
-  | _, _ => false
-  end.
 
 Definition Balance := Address -> Currency -> Z.
 Definition update (balance : Balance) (a : Address)
            (c : Currency) (amount : Z): Balance :=
   fun (x : Address) (y : Currency) =>
-    if (andb (Nat.eqb x a) (Currency_beq c y))
+    if (andb (Nat.eqb x a) (beq_currency c y))
     then amount
     else (balance x y).
 
@@ -58,9 +59,7 @@ Inductive Primitive :=
 | Or        : Primitive -> Primitive ->            Primitive
 | If        : Address -> Primitive -> Primitive -> Primitive
 | Timebound : TimeInterval -> Primitive ->         Primitive.
-Scheme Equality for Primitive.
 
-(* derived syntax *)
 Definition At (t : nat) (p : Primitive) := Timebound (interval (t - Δ) (t + Δ)) p.
 Definition Before (t : nat) (p : Primitive) := Timebound (before t) p.
 Definition After (t : nat) (p : Primitive) := Timebound (after t) p.
@@ -123,9 +122,6 @@ Record FinContract :=
       ctr_proposed_owner : Address;
       ctr_scale : nat;
     }.
-Scheme Equality for FinContract.
-
-
 Record Result :=
   result {
       res_balance : Balance;
@@ -275,12 +271,14 @@ A Findel contract has the following execution model~\cite{findel}:
 
 3. The execution of a contract -- more precisely, the execution of its corresponding primitive -- either has an effect on the balance of the participants, or it issues new contracts. In the Coq semantics, we use the function {\tt execute\_primitive} to execute a primitive.
 
- *)
+*)
+
+Axiom ctr_eq_dec : forall c c' : FinContract, {c = c'} + {c <> c}.
 
 Fixpoint rm (c : FinContract) (l : list FinContract) :=
   match l with
   | [] => []
-  | (c' :: l) => if FinContract_eq_dec c c'
+  | (c' :: l) => if ctr_eq_dec c c'
                  then (rm c l)
                  else c' :: (rm c l)
   end.
