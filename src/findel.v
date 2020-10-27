@@ -231,9 +231,9 @@ Definition ContractDescriptions := nat -> ContractDescription.
 
 
 Inductive Event :=
-| IssuedFor : Address -> Id -> Event
-| Executed : Id -> Event
-| Deleted : Id -> Event.
+| IssuedFor : Address -> FinContract -> Event
+| Executed : FinContract -> Event
+| Deleted : FinContract -> Event.
 
 (** * The State
 
@@ -319,9 +319,15 @@ Definition can_join (owner : Address)(ctr : FinContract) :=
   (owner = ctr_proposed_owner ctr \/ ctr_proposed_owner ctr = 0).
 
 
-Definition next_id_is_fresh (state : State) :=
+Definition next_id_is_fresh' (state : State) :=
   (greater_than_all (m_fresh_id state) (m_contracts state)).
       
+Definition next_id_is_fresh (state : State) :=
+  (forall ctr, In ctr (m_contracts state) -> (ctr_id ctr <> m_fresh_id state)) /\
+  (forall ctr, In (Executed ctr) (m_events state) -> (ctr_id ctr <> m_fresh_id state)) /\
+  (forall ctr, In (Deleted ctr) (m_events state) -> (ctr_id ctr <> m_fresh_id state)) /\
+  (forall ctr owner, In (IssuedFor owner ctr) (m_events state) -> (ctr_id ctr <> m_fresh_id state)).
+
 
 Definition exec_ctr_in_state_with_owner
            (ctr : FinContract) (state : State) (owner : Address) :=
@@ -361,7 +367,7 @@ Definition append_new_ctr_to_state (ctr : FinContract) (state1 : State) :=
         (m_gateway state1)
         (S (m_fresh_id state1))
         (m_ledger state1)
-        (IssuedFor (ctr_proposed_owner ctr) (ctr_id ctr) :: (m_events state1)).
+        (IssuedFor (ctr_proposed_owner ctr) ctr :: (m_events state1)).
 
 
 Definition update_state
@@ -398,7 +404,7 @@ Inductive step (state1 state2 : State) : Prop  :=
       next_id_is_fresh state1 ->
       ~ is_or (ctr_primitive ctr) ->
       (between_time_limits ctr state1) ->
-      ~ In (Executed (ctr_id ctr)) (m_events state1) ->
+      ~ In (Executed ctr) (m_events state1) ->
       exec_ctr_in_state_with_owner ctr state1 owner =
       Some (result balance' ctrs' next' ledger') ->
       state2 = update_state state1
@@ -406,7 +412,7 @@ Inductive step (state1 state2 : State) : Prop  :=
                             balance'
                             next'
                             ledger'
-                            (Executed (ctr_id ctr) :: m_events state1) ->
+                            (Executed ctr :: m_events state1) ->
       step state1 state2
 (* Join an Or contract: choose first *)
 | or_first :
@@ -416,7 +422,7 @@ Inductive step (state1 state2 : State) : Prop  :=
       next_id_is_fresh state1 ->
       ctr_primitive ctr = Or c1 c2 ->
       (between_time_limits ctr state1) ->
-      ~ In (Executed (ctr_id ctr)) (m_events state1) ->
+      ~ In (Executed ctr) (m_events state1) ->
       exec_prim_ctr_in_state_with_owner c1 ctr state1 owner =
       Some (result balance' ctrs' next' ledger') ->
       state2 = update_state state1
@@ -424,7 +430,7 @@ Inductive step (state1 state2 : State) : Prop  :=
                             balance'
                             next'
                             ledger'
-                            (Executed (ctr_id ctr) :: m_events state1) ->
+                            (Executed ctr :: m_events state1) ->
       step state1 state2
 (* Join an Or contract: choose second *)
 | or_second :
@@ -434,7 +440,7 @@ Inductive step (state1 state2 : State) : Prop  :=
       next_id_is_fresh state1 ->
       ctr_primitive ctr = Or c1 c2 ->
       (between_time_limits ctr state1) ->
-      ~ In (Executed (ctr_id ctr)) (m_events state1) ->
+      ~ In (Executed ctr) (m_events state1) ->
       exec_prim_ctr_in_state_with_owner c2 ctr state1 owner =
       Some (result balance' ctrs' next' ledger') ->
       state2 = update_state state1
@@ -442,7 +448,7 @@ Inductive step (state1 state2 : State) : Prop  :=
                             balance'
                             next'
                             ledger'
-                            (Executed (ctr_id ctr) :: m_events state1) ->
+                            (Executed ctr :: m_events state1) ->
       step state1 state2
 
 (* Failed contract: the execution of the contract fails when the gateway does not provide data (either it is offline or data is not fresh) or when the time is not in the time bounds; in both cases the contract is removed, the rest of the state does not change. *)
@@ -458,7 +464,7 @@ Inductive step (state1 state2 : State) : Prop  :=
                             (m_balance state1) 
                             (m_fresh_id state1)
                             (m_ledger state1)
-                            (Deleted (ctr_id ctr) :: m_events state1) ->
+                            (Deleted ctr :: m_events state1) ->
       step state1 state2
 (* Tick: the time is incremented, the gateway freshness counter inccreases as well. *)
 | tick : state2 = state (m_contracts state1)

@@ -177,6 +177,16 @@ Definition joins_generated'
                (executed ctr s s' t_first \/ deleted ctr s s' t_first) /\
                generates ctr gen_ctr s (ctr_issuer ctr) O /\ joins I gen_ctr s' s2 t_second.
 
+(* 
+Consistent:
+In ctr (m_contracts s) -> ~ Executed (ctr_id ctr) (m_events s)
+In ctr (m_contracts s) -> ~ Deleted (ctr_id ctr) (m_events s)
+Executed (ctr_id ctr) (m_events s) -> ~ In ctr (m_contracts s)
+Executed (ctr_id ctr) (m_events s) -> ~ Deleted (ctr_id ctr) (m_events s)
+Deleted (ctr_id ctr) (m_events s) -> ~ In ctr (m_contracts s)
+Deleted (ctr_id ctr) (m_events s) -> ~ Executed (ctr_id ctr) (m_events s)
+
+*) 
 
 Definition consistent_state (s : State) :=
   (forall ctr, In ctr (m_contracts s) -> m_fresh_id s > ctr_id ctr) /\
@@ -512,10 +522,11 @@ Proof.
       eapply IHP; eauto.
 Qed.
 
+
 Lemma incl_rm : forall S x y, x <> y -> In x (rm y S) -> In x S.
 Proof.
   induction S.
-  - simpl.intros. trivial.
+  - simpl. intros. trivial.
   - intros.
     simpl in H0.
     case_eq (FinContract_eq_dec y a); intros He H'; rewrite H' in H0. subst.
@@ -524,8 +535,21 @@ Proof.
       * simpl. left. reflexivity.
       * simpl. right. eapply IHS; eauto.
 Qed.
-  
 
+Lemma helper_1 :
+  forall s s' ctr bal' ctrs' next' L' owner,
+    step s s' ->
+    ~ In (Executed (ctr_id ctr)) (m_events s) ->
+    In (Executed (ctr_id ctr)) (m_events s') ->
+    ~ In ctr (m_contracts s').
+       
+    consistent_state s ->
+    exec_ctr_in_state_with_owner ctr s owner = Some (result bal' ctrs' next' L') ->
+    ~ In (Executed (ctr_id ctr)) (m_events s) ->
+    ~ In ctr (rm ctr (m_contracts s) ++ ctrs').
+Proof.
+Admitted.
+  
 Lemma step_preserves_consistent_state_1:
   forall s s',
     step s s' ->
@@ -541,6 +565,10 @@ Proof.
     + apply H0 in H1. omega.
   - case_eq (FinContract_eq_dec ctr ctr0); intros.
     + subst.
+
+      
+          
+      subst.
       apply in_app_iff in H1.
       destruct H1 as [H1 | H1].
       * exfalso. eapply rm_in. exact H1.
