@@ -28,33 +28,26 @@ Proof.
   - insert_consistent s Ss.
     induction St; subst s'.
     + inversion_event Ev. find_contradiction H.
-    + ctr_case_analysis ctr ctr0.
+    + same_ctr Ev.  subst ctr0.
       execute_own ctr H10.
       case_if H10.
-      case_if H13.
       * eexists. split.
         ** eapply steps_does_not_remove_transactions; eauto.
            simpl. subst ledger'. left. eauto.
         ** repeat split; trivial. resolve_owner H5.
-      * simpl in *. rewrite <- T0 in *.
-        apply ltb_sound_false in H10. contradiction H10.
-    + not_or ctr ctr0 H7.
-    + not_or ctr ctr0 H7.
+      * simpl in *. rewrite <- T0 in *. 
+        apply ltb_sound_false in H0. contradiction H0.
+    + same_ctr Ev. subst ctr0. not_or' ctr H7.
+    + same_ctr Ev. subst ctr0. not_or' ctr H7.
     + inversion_event Ev. find_contradiction H.
     + find_contradiction H.
   - insert_consistent s Ss.
     induction St; subst s'.
     + inversion_event Ev. find_contradiction_del H.
     + inversion_event Ev. find_contradiction_del H.
-    + not_or ctr ctr0 H7.
-    + not_or ctr ctr0 H7.
-    + ctr_case_analysis ctr ctr0.
-      execute_own ctr H8.
-      case_if H8.
-      * apply ltb_sound_true in H0.
-        apply Nat.lt_asymm in H0.
-        contradict H0. apply infinite.
-      * case_if H11.
+    + inversion_event Ev. find_contradiction_del H.
+    + inversion_event Ev. find_contradiction_del H.
+    + same_ctr_del Ev. subst ctr0. execute_own ctr H8. case_if H8.
     + find_contradiction_del H.
 Qed.
 
@@ -79,37 +72,26 @@ Proof.
     insert_consistent s' St.
     induction St; subst s'.
     + inversion_event Ev. find_contradiction M.
-    + ctr_case_analysis ctr ctr0.
+    + same_ctr Ev. subst ctr0.
       execute_own ctr H12.
       case_analysis H12.
       case_analysis H15.
-      * case_analysis H16.
-        case_analysis H17; simpl in *;
-          rewrite H0, H12, H14, H15 in Exec; inversion Exec; clear Exec;
-            rewrite <- H17 in M0; simpl in M0.
-        ** destruct M0 as [M0 | M0]; try contradiction.
-           rewrite <- M0 in H2. simpl in H2. inversion H2.
-        ** destruct M0 as [M0 | [M0 | M0]]; try contradiction.
-           *** rewrite <- M0 in H2. simpl in H2. inversion H2.
-           *** eapply option_I_to_O_helper; eauto.
-               rewrite <- M0 in J.
-               rewrite <- M0. simpl.
-               exact J.
-      * case_analysis H16.
-        case_analysis H17; simpl in *;
-          rewrite H0, H12, H14, H15 in Exec; inversion Exec; clear Exec;
-            rewrite <- H17 in M0; simpl in M0.
-        ** destruct M0 as [M0 | M0]; try contradiction.
-           rewrite <- M0 in H2. simpl in H2. inversion H2.
-        ** destruct M0 as [M0 | [M0 | M0]]; try contradiction.
-           *** rewrite <- M0 in H2. simpl in H2. inversion H2.
-           *** eapply option_I_to_O_helper; eauto.
-               rewrite <- M0 in J.
-               rewrite <- M0. simpl.               
-               exact J.
-    + not_or ctr ctr0 H9.
-    + not_or ctr ctr0 H9.
-    + ctr_case_analysis ctr ctr0. inversion_event Ev. find_contradiction M.
+      * apply ltb_sound_false in H0.
+        apply ltb_sound_true in H12.
+        omega.
+      * simpl in *.
+        rewrite H0, H12 in Exec; inversion Exec. clear Exec.
+        subst res.
+        simpl in M0.
+        destruct M0 as [M0 | [M0 | M0]]; try contradiction.
+        ** rewrite <- M0 in H2. inversion H2.
+        ** eapply option_I_to_O_helper; eauto.
+           rewrite <- M0 in J.
+           rewrite <- M0. simpl.
+           exact J.
+    + same_ctr Ev. subst ctr0. not_or' ctr H9.
+    + same_ctr Ev. subst ctr0. not_or' ctr H9.
+    + inversion_event Ev. find_contradiction M.
     + find_contradiction M.
   - insert_consistent s Ss.
     destruct_deleted D.
@@ -117,22 +99,14 @@ Proof.
     induction St; subst s'.
     + inversion_event Ev. find_contradiction_del M.
     + inversion_event Ev. find_contradiction_del M.
-    + not_or ctr ctr0 H9.
-    + not_or ctr ctr0 H9.
-    + ctr_case_analysis ctr ctr0.
+    + inversion_event Ev. find_contradiction_del M.
+    + inversion_event Ev. find_contradiction_del M.
+    + same_ctr_del Ev. subst ctr0.
       execute_own ctr H10.
       case_analysis H10.
       * unfold option_derivative in Exec. simpl in Exec.
         rewrite H0 in Exec. inversion Exec.
       * case_analysis H13.
-        ** case_analysis H14.
-           *** unfold option_derivative in Exec. simpl in Exec.
-               rewrite H0, H10, H12 in Exec. inversion Exec.
-           *** case_analysis H15.
-        ** case_analysis H15.
-           *** unfold option_derivative in Exec. simpl in Exec.
-               rewrite H0, H10, H12 in Exec. inversion Exec.
-           *** case_analysis H15.
     + find_contradiction_del M.
 Qed.
 
@@ -155,43 +129,45 @@ Proof.
     insert_consistent s Ss1.
     induction St; subst s'.
     + inversion_event Ev. find_contradiction M.
-    + ctr_case_analysis ctr ctr0.
+    + same_ctr Ev. subst ctr0.
       execute_own ctr H11.
       destruct_generates H4.
       simpl in Exec.
       case_analysis H11.
       case_analysis H14. rewrite H0, H4 in *.
-      * case_analysis H15.
-        case_analysis H16; rewrite H13, H14 in *; subst res; simpl in *.
-        ** destruct M0 as [M0 | M0]; try contradiction.
-           subst gen_ctr. simpl. trivial.
-        ** destruct M0 as [M0 | [M0 | M0]]; try contradiction; try subst gen_ctr; simpl; trivial.
-      * case_analysis H15.
-        case_analysis H16; rewrite H13, H14 in *; subst res; simpl in *.
-        ** destruct M0 as [M0 | M0]; try contradiction.
-           subst gen_ctr. simpl. trivial.
-        ** destruct M0 as [M0 | [M0 | M0]]; try contradiction; try subst gen_ctr; simpl; trivial.
-    + not_or ctr ctr0 H8.
-    + not_or ctr ctr0 H8.
-    + ctr_case_analysis ctr ctr0. inversion_event Ev. find_contradiction M.
+      * apply ltb_sound_false in H0.
+        apply ltb_sound_true in H4.
+        omega.
+      * subst res.
+        simpl in M0.
+        destruct M0 as [M0 | [M0 | M0]]; try contradiction.
+        ** subst gen_ctr. simpl. trivial.
+        ** subst gen_ctr. simpl. trivial.
+    + same_ctr Ev. subst ctr0. not_or' ctr H8.
+    + same_ctr Ev. subst ctr0. not_or' ctr H8.
+    + inversion_event Ev. find_contradiction M.
     + find_contradiction M.
   - destruct_deleted D.
     insert_consistent s Ss1.
     induction St; subst s'.
     + inversion_event Ev. find_contradiction_del M.
     + inversion_event Ev. find_contradiction_del M.
-    + not_or ctr ctr0 H8.
-    + not_or ctr ctr0 H8.
-    + ctr_case_analysis ctr ctr0.
+    + inversion_event Ev. find_contradiction_del M.
+    + inversion_event Ev. find_contradiction_del M.
+    + same_ctr_del Ev. subst ctr0.
       execute_own ctr H9.
       destruct_generates H4.
       simpl in Exec.
       case_analysis H9.
       case_analysis H12; rewrite H0, H4 in *.
-      * case_analysis H13.
-        case_analysis H14; rewrite H11, H12 in *; try inversion H9.
-      * case_analysis H13.
-        case_analysis H14; rewrite H11, H12 in H9; try inversion H9.
+      * apply ltb_sound_false in H0.
+        apply ltb_sound_true in H4.
+        omega.
+      * subst res.
+        simpl in M0.
+        destruct M0 as [M0 | [M0 | M0]]; try contradiction.
+        ** subst gen_ctr. simpl. trivial.
+        ** subst gen_ctr. simpl. trivial.
     + find_contradiction_del M.
 Qed.
 
@@ -218,8 +194,8 @@ Proof.
     insert_consistent s' St.
     induction St; subst s'.
     + inversion_event Ev. find_contradiction M.
-    + ctr_case_analysis ctr ctr0. subst ctr. simpl in H7. contradiction.
-    + ctr_case_analysis ctr ctr0.
+    + same_ctr Ev. subst ctr0 ctr. simpl in H7. contradiction.
+    + same_ctr Ev. subst ctr0.
       rewrite H0 in H10, H7. simpl in H7. inversion H7.
       unfold exec_prim_ctr_in_state_with_owner in H10.
       subst c1 c2. simpl in H10. inversion H10.
@@ -227,7 +203,7 @@ Proof.
       * eapply steps_does_not_remove_transactions; eauto.
         subst ledger'. simpl. left. trivial.
       * repeat split; trivial. resolve_owner H5.
-    + ctr_case_analysis ctr ctr0.
+    + same_ctr Ev. subst ctr0.
       rewrite H0 in H10, H7. simpl in H7. inversion H7.
       unfold exec_prim_ctr_in_state_with_owner in H10.
       subst c1 c2. simpl in H10. inversion H10.
@@ -235,16 +211,16 @@ Proof.
       * eapply steps_does_not_remove_transactions; eauto.
         subst ledger'. simpl. left. trivial.
       * repeat split; trivial. resolve_owner H5.
-    + ctr_case_analysis ctr ctr0. execute_own ctr H8. inversion H8.
+    + inversion_event Ev. find_contradiction M.
     + find_contradiction M.
   - insert_consistent s Ss.
     insert_consistent s' St.
     induction St; subst s'.
     + inversion_event Ev. find_contradiction_del M.
-    + ctr_case_analysis ctr ctr0. subst ctr. simpl in H7. contradiction.
-    + simpl in Ev. inversion_event Ev. find_contradiction_del M.
-    + simpl in Ev. inversion_event Ev. find_contradiction_del M.
-    + ctr_case_analysis ctr ctr0. execute_own ctr H8. inversion H8.
+    + inversion_event Ev. find_contradiction_del M.
+    + inversion_event Ev. find_contradiction_del M.
+    + inversion_event Ev. find_contradiction_del M.
+    + same_ctr_del Ev. subst ctr0. execute_own ctr H8. inversion H8.
     + find_contradiction_del M.
 Qed.
 
@@ -268,30 +244,24 @@ Proof.
     insert_consistent s' St.
     induction St; subst s'.
     + inversion_event Ev. find_contradiction M.
-    + ctr_case_analysis ctr ctr0.
+    + same_ctr Ev. subst  ctr0.
       execute_own ctr H11.
       case_analysis H11.
       case_analysis H14.
-      * case_analysis H15.
-        case_analysis H16.
-        ** subst t. apply ltb_sound_true in H14. contradict H14. omega.
-        ** simpl in Exec. rewrite H0, H11, H13, H14 in Exec.
-           inversion Exec. subst res. simpl in *.
-           destruct M0 as [M0 | [M0 | M0]]; try contradiction.
-           *** eapply option_O_to_I_helper; eauto.
-               rewrite <- M0 in J. rewrite <- M0.
-               exact J.
-           *** rewrite <- M0 in H2. simpl in H2. inversion H2.
-      * case_analysis H15.
-        case_analysis H16.
-        ** subst t. apply ltb_sound_true in H14. contradict H14. omega.
-        ** simpl in Exec. rewrite H0, H11, H13, H14 in Exec.
-           inversion Exec. subst res. simpl in *.
-           destruct M0 as [M0 | [M0 | M0]]; try contradiction;
-             rewrite <- M0 in H2; simpl in H2; inversion H2.
-    + not_or ctr ctr0 H8.
-    + not_or ctr ctr0 H8.
-    + ctr_case_analysis ctr ctr0. inversion_event Ev. find_contradiction M.
+      * apply ltb_sound_false in H0.
+        apply ltb_sound_true in H11.
+        omega.
+      * simpl in Exec.
+        rewrite H0, H11 in Exec.  inversion Exec; clear Exec.
+        subst res.
+        destruct M0 as [M0 | [M0 | M0]]; try contradiction.
+        ** eapply option_O_to_I_helper; eauto.
+           rewrite <- M0 in *.
+           simpl.  exact J.
+        ** rewrite <- M0 in H2. simpl in H2. inversion H2.
+    + same_ctr Ev. subst  ctr0. not_or' ctr H8.
+    + same_ctr Ev. subst  ctr0. not_or' ctr H8.
+    + inversion_event Ev.  find_contradiction M.
     + find_contradiction M.
   - insert_consistent s Ss.
     destruct_deleted D.
@@ -299,21 +269,13 @@ Proof.
     induction St; subst s'.
     + inversion_event Ev. find_contradiction_del M.
     + inversion_event Ev. find_contradiction_del M.
-    + not_or ctr ctr0 H8.
-    + not_or ctr ctr0 H8.
-    + ctr_case_analysis ctr ctr0.
+    + inversion_event Ev. find_contradiction_del M.
+    + inversion_event Ev. find_contradiction_del M.
+    + same_ctr_del Ev. subst ctr0.
       execute_own ctr H9.
       case_analysis H9.
       * simpl in Exec. rewrite H0 in Exec. inversion Exec.
       * case_analysis H12.
-        ** case_analysis H13; try case_analysis H14.
-           apply ltb_sound_true in H11.
-           apply Nat.lt_asymm in H11.
-           contradict H11. eapply infinite.
-        ** case_analysis H13; try case_analysis H14.
-           apply ltb_sound_true in H11.
-           apply Nat.lt_asymm in H11.
-           contradict H11. eapply infinite.
     + find_contradiction_del M.
 Qed.
 

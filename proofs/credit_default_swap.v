@@ -157,16 +157,16 @@ Lemma helper_1 :
 Proof.
   intros.
   case_eq (t + y + d <? t); intros * H'; trivial.
-  apply ltb_sound_true in H'.
+  apply leb_sound_true in H'.
   omega.
 Qed.
 
 Lemma helper_2 :
-  forall t y d,  y > d -> (t + y - d <? t) = false.
+  forall t y d,  y > d -> (t + y - d <=? t) = false.
 Proof.
   intros.
-  case_eq (t + y - d <? t); intros * H'; trivial.
-  apply ltb_sound_true in H'.
+  case_eq (t + y - d <=? t); intros * H'; trivial.
+  apply leb_sound_true in H'.
   omega.
 Qed.
 
@@ -176,7 +176,8 @@ Proof.
   induction l; intros; simpl in *; trivial.
   case_eq (ctr_eq_dec x' a); intros * H'; rewrite H' in H.
   - subst. right. eapply IHl. eauto.
-  - contradiction.
+  - destruct H as [H | H]; auto.
+    right. eapply IHl; eauto.
 Qed.
 
 Lemma h1 :
@@ -200,27 +201,22 @@ Qed.
 
 Lemma exec_later_no_effect :
   forall s1 s2 c T t t' primitive,
+    consistent_state s1 ->
     is_executed c s1 s2 (T + t) ->
     ctr_primitive c = At (T + t') primitive ->
     t - t' > Δ ->
     m_ledger s1 = m_ledger s2.
 Proof.
-  intros * Exec Prim C.
+  intros * CS Exec Prim C.
   destruct_exec Exec.
   induction Step; subst s2; try auto.
-  - ctr_case_analysis c ctr.
-    destruct c. simpl in Prim. subst ctr_primitive0.
-    unfold exec_ctr_in_state_with_owner, execute in H5. simpl in *.
-    case_if H5.
-    clear H9 H6 H3 H H0 H2 H4.
-    rewrite <- T0 in *.
-    apply ltb_sound_false in H7.
-    contradict H7.
-    omega.
-  - ctr_case_analysis c ctr. rewrite Prim in H2. inversion H2.
-  - ctr_case_analysis c ctr. rewrite Prim in H2. inversion H2.
+  - same_ctr InEv.
+    subst ctr. destruct c. simpl in *. subst.
+    unfold exec_ctr_in_state_with_owner, execute in H5; simpl in *.
+    case_if H5. apply ltb_sound_false in H6. omega.
+  - same_ctr InEv. subst ctr. rewrite Prim in H2. inversion H2.
+  - same_ctr InEv. subst ctr. rewrite Prim in H2. inversion H2.
 Qed.
-
 
 (***********************)
 (* Proofs for pay_at_t *)
@@ -245,27 +241,26 @@ Proof.
   destruct_exec Exec.
   induction Step; subst s2.
   - inversion_event InEv. find_contradiction InEv.
-  - ctr_case_analysis c ctr.
+  - same_ctr InEv. subst ctr.
     execute_own c H5.
     case_if H5.
     case_if H9; simpl.
     + subst t.
-      rewrite Q in H10.
+      rewrite Q in H9.
       destruct response; simpl in *; try contradiction.
-      inversion H10. subst.
+      inversion H9. subst.
       eexists.
       split.
       * simpl. left. eauto.
       * repeat split; simpl; trivial.
         resolve_owner H0. omega.
-    + subst t. apply ltb_sound_false in H5. contradict H5.
+    + subst t. apply leb_sound_false in H5. contradict H5.
       assert (H' : m_global_time s1 > Δ).
       apply global_time_is_bigger_than_delta. 
       unfold Δ. omega.
-  - not_or c ctr H2.
-  - not_or c ctr H2.
-  - ctr_case_analysis c ctr.
-    inversion_event InEv. find_contradiction InEv.
+  - same_ctr InEv. subst ctr. not_or' c H2.
+  - same_ctr InEv. subst ctr. not_or' c H2.
+  - inversion_event InEv. find_contradiction InEv.
   - find_contradiction InEv.
 Qed.
 
@@ -282,21 +277,20 @@ Proof.
   destruct_exec Exec.
   induction Step; subst s2.
   - inversion_event InEv. find_contradiction InEv.
-  - ctr_case_analysis c ctr.
+  - same_ctr InEv. subst ctr.
     execute_own c H5.
     case_if H5.
     case_if H9; simpl.
     + subst t.
-      rewrite Q in H10. simpl in *.
-      inversion H10. trivial.
-    + subst t. apply ltb_sound_false in H5. contradict H5.
+      rewrite Q in H9. simpl in *.
+      inversion H9. trivial.
+    + subst t. apply leb_sound_false in H5. contradict H5.
       assert (H' : m_global_time s1 > Δ).
       apply global_time_is_bigger_than_delta. 
       unfold Δ. omega.
-  - not_or c ctr H2.
-  - not_or c ctr H2.
-  - ctr_case_analysis c ctr.
-    inversion_event InEv. find_contradiction InEv.
+  - same_ctr InEv. subst ctr. not_or' c H2.
+  - same_ctr InEv. subst ctr. not_or' c H2.
+  - inversion_event InEv. find_contradiction InEv.
   - find_contradiction InEv.
 Qed.
 Print pay_at_t_O_rights.
@@ -323,18 +317,18 @@ Proof.
   destruct_exec Exec.
   induction Step; subst s2.
   - inversion_event InEv. find_contradiction InEv.
-  - ctr_case_analysis c ctr.
+  - same_ctr InEv. subst ctr. 
     execute_own c H5.
     subst t. simpl.
     case_if H5.
     case_if H9; simpl.
-    + rewrite Q1 in H10. simpl in H10.
-      destruct response; try contradiction. simpl in H10.
-      inversion H10. clear H10. subst. trivial.
+    + rewrite Q1 in H9. simpl in H9.
+      destruct response; try contradiction. simpl in H9.
+      inversion H9. clear H9. subst. trivial.
     + trivial.
-  - not_or c ctr H2.
-  - not_or c ctr H2.
-  - ctr_case_analysis c ctr. inversion_event InEv. find_contradiction InEv.
+  - same_ctr InEv. subst ctr. not_or' c H2.
+  - same_ctr InEv. subst ctr. not_or' c H2.
+  - inversion_event InEv. find_contradiction InEv.
   - find_contradiction InEv.
 Qed.
 
@@ -358,25 +352,25 @@ Proof.
   destruct_exec Exec.
   induction Step; subst s2.
   - inversion_event InEv. find_contradiction InEv.
-  - ctr_case_analysis c ctr.
+  - same_ctr InEv. subst ctr.
     execute_own c H5.
     subst t. simpl.
     case_if H5.
     case_if H9; simpl.
-    + subst. rewrite Q1 in H10. simpl in H10.
-      case_match H10.
-      case_if H8.
-      case_if H12.
-      * apply ltb_sound_true in H8. contradict H8. omega.
-      * destruct r. inversion H13. clear H13. subst.
-        inversion H11. clear H11.
+    + subst. rewrite Q1 in H9. simpl in H9.
+      case_match H9.
+      case_if H7.
+      case_if H11.
+      * apply leb_sound_true in H7. contradict H7. omega.
+      * destruct r. inversion H12. clear H12. subst.
+        inversion H10. clear H10.
         eexists. split.
         apply in_app_iff. right. simpl. left. trivial.
         repeat split; trivial. resolve_owner H0.
-    + apply ltb_sound_false in H5. contradict H5. unfold Δ. omega.
-  - not_or c ctr H2.
-  - not_or c ctr H2.
-  - ctr_case_analysis c ctr. inversion_event InEv. find_contradiction InEv.
+    + apply leb_sound_false in H5. contradict H5. unfold Δ. omega.
+  - same_ctr InEv. subst ctr. not_or' c H2.
+  - same_ctr InEv. subst ctr. not_or' c H2.
+  - inversion_event InEv. find_contradiction InEv.
   - find_contradiction InEv.
 Qed.
 
@@ -402,31 +396,31 @@ Proof.
   destruct_exec Exec.
   induction Step; subst s2.
   - inversion_event InEv. find_contradiction InEv.
-  - ctr_case_analysis c ctr.
+  - same_ctr InEv.  subst ctr.
     execute_own c H5.
     subst t. simpl.
     case_if H5.
     case_if H9; simpl.
-    + subst. rewrite Q1 in H10. simpl in H10.
-      case_match H10.
-      case_if H8.
-      case_if H12.
-      * destruct r. inversion H13. clear H13. subst.
-        inversion H11. clear H11.
+    + subst. rewrite Q1 in H9. simpl in H9.
+      case_match H9.
+      case_if H7.
+      case_if H11.
+      * destruct r. inversion H12. clear H12. subst.
+        inversion H10. clear H10.
         eexists.  simpl. split. left. trivial.
         repeat split; auto.
         simpl. resolve_owner H0.
         simpl. omega.
-      * destruct r. inversion H13. clear H13. subst.
-        inversion H11. clear H11.
+      * destruct r. inversion H12. clear H12. subst.
+        inversion H10. clear H10.
         eexists.  simpl. split. left. trivial.
         repeat split; auto.
         simpl. resolve_owner H0.
         simpl. omega.
-    + apply ltb_sound_false in H5. contradict H5. unfold Δ. omega.
-  - not_or c ctr H2.
-  - not_or c ctr H2.
-  - ctr_case_analysis c ctr. inversion_event InEv. find_contradiction InEv.
+    + apply leb_sound_false in H5. contradict H5. unfold Δ. omega.
+  - same_ctr InEv. subst ctr. not_or' c H2.
+  - same_ctr InEv. subst ctr. not_or' c H2.
+  - inversion_event InEv. find_contradiction InEv.
   - find_contradiction InEv.
 Qed.
 Print yearly_checks_already_defaulted.
@@ -503,9 +497,9 @@ Proof.
   induction Step; subst s2.
   - inversion_event InEv.
     apply consistent_impl_exec in InCtr0; auto. contradiction.
-  - ctr_case_analysis CDSctr ctr. clear H8.
+  - same_ctr InEv. subst ctr.
     execute_own CDSctr H7. simpl in *.
-    subst now.
+    subst now. 
     rewrite helper_1, helper_2 in H7; unfold Δ; try auto; try omega.
     rewrite helper_1, helper_2 in H7; unfold Δ; try auto; try omega.
     inversion H7. clear H7. subst.
@@ -517,12 +511,9 @@ Proof.
         eapply pay_at_t_O_rights; eauto. unfold pay_at_t, At. eauto.
       * subst c'. simpl in Prim. unfold pay_at_t, At in Prim. inversion Prim.
       * subst c'. simpl in Prim. unfold pay_at_t, At in Prim. inversion Prim.
-  - not_or ctr CDSctr H4.
-  - not_or ctr CDSctr H4.
-  - ctr_case_analysis CDSctr ctr.
-    execute_own CDSctr H5. inversion InEv.
-    apply consistent_impl_exec in InCtr0; auto. inversion H7; auto.
-    find_contradiction InEv.
+  - same_ctr InEv. subst ctr. not_or' CDSctr H4.
+  - same_ctr InEv. subst ctr. not_or' CDSctr H4.
+  - inversion_event InEv. inconsistent Cst InEv.
   - simpl in InCtr. contradiction.
 Qed.
 
@@ -566,7 +557,7 @@ Proof.
   induction Step; subst s2.
   - inversion_event InEv.
     apply consistent_impl_exec in InCtr0; auto. contradiction.
-  - ctr_case_analysis CDSctr ctr. clear H8.
+  - same_ctr InEv. subst ctr.
     execute_own CDSctr H7. simpl in *.
     subst now.
     rewrite helper_1, helper_2 in H7; unfold Δ; try auto; try omega.
@@ -584,12 +575,9 @@ Proof.
         exact Exec2.
       * subst c'. inversion Prim.
         contradict H9. omega.
-  - not_or ctr CDSctr H4.
-  - not_or ctr CDSctr H4.
-  - ctr_case_analysis CDSctr ctr.
-    execute_own CDSctr H5. inversion InEv.
-    apply consistent_impl_exec in InCtr0; auto. inversion H7; auto.
-    find_contradiction InEv.
+  - same_ctr InEv. subst ctr. not_or' CDSctr H4.
+  - same_ctr InEv. subst ctr. not_or' CDSctr H4.
+  - inversion_event InEv. inconsistent Cst InEv.
   - simpl in InCtr. contradiction.
 Qed.
 
@@ -632,7 +620,7 @@ Proof.
   induction Step; subst s2.
   - inversion_event InEv.
     apply consistent_impl_exec in InCtr0; auto. contradiction.
-  - ctr_case_analysis CDSctr ctr. clear H8.
+  - same_ctr InEv. subst ctr.
     execute_own CDSctr H7. simpl in *.
     subst now.
     rewrite helper_1, helper_2 in H7; unfold Δ; try auto; try omega.
@@ -650,12 +638,9 @@ Proof.
         unfold yearly_check, At.
         instantiate (2 := b2afee). instantiate (2 := 0).
         exact Exec2.
-  - not_or ctr CDSctr H4.
-  - not_or ctr CDSctr H4.
-  - ctr_case_analysis CDSctr ctr.
-    execute_own CDSctr H5. inversion InEv.
-    apply consistent_impl_exec in InCtr0; auto. inversion H7; auto.
-    find_contradiction InEv.
+  - same_ctr InEv. subst ctr. not_or' CDSctr H4.
+  - same_ctr InEv. subst ctr. not_or' CDSctr H4.
+  - inversion_event InEv. inconsistent  Cst InEv.
   - simpl in InCtr. contradiction.
 Qed.
 
@@ -691,7 +676,7 @@ Proof.
   insert_consistent s2 Step.
   induction Step; subst s2.
   - inversion_event InEv. find_contradiction InEv.
-  - ctr_case_analysis CDSctr ctr. clear H7.
+  - same_ctr InEv. subst ctr.
     execute_own CDSctr H6. simpl in *.
     subst now.
     rewrite helper_1, helper_2 in H6; unfold Δ; try auto; try omega.
@@ -700,10 +685,9 @@ Proof.
     eexists. split. simpl. left. trivial.
     repeat split; trivial. simpl. resolve_owner H1.
     simpl. auto.
-  - not_or ctr CDSctr H3.
-  - not_or ctr CDSctr H3.
-  - ctr_case_analysis CDSctr ctr.
-    inversion_event InEv. find_contradiction InEv.
+  - same_ctr InEv. subst ctr. not_or' CDSctr H3.
+  - same_ctr InEv. subst ctr. not_or' CDSctr H3.
+  - inversion_event InEv. inconsistent Cst InEv.
   - find_contradiction InEv.
 Qed.
 Print CDS_Y1_C1.
@@ -769,7 +753,7 @@ Proof.
   induction Step; subst s2.
   - inversion_event InEv.
     apply consistent_impl_exec in InCtr0; auto. contradiction.
-  - ctr_case_analysis CDSctr ctr. clear H8.
+  - same_ctr InEv. subst ctr.
     execute_own CDSctr H7. simpl in *.
     subst now.
     rewrite helper_1, helper_2 in H7; unfold Δ; try auto; try omega.
@@ -783,12 +767,9 @@ Proof.
         eapply pay_at_t_not_defaulted; eauto.
       * subst c'. inversion Prim.
       * subst c'. inversion Prim.
-  - not_or ctr CDSctr H4.
-  - not_or ctr CDSctr H4.
-  - ctr_case_analysis CDSctr ctr.
-    execute_own CDSctr H5. inversion InEv.
-    apply consistent_impl_exec in InCtr0; auto. inversion H7; auto.
-    find_contradiction InEv.
+  - same_ctr InEv. subst ctr. not_or' CDSctr H4.
+  - same_ctr InEv. subst ctr. not_or' CDSctr H4.
+  - inversion_event InEv. inconsistent Cst InEv.
   - simpl in InCtr. contradiction.
 Qed.
 
@@ -840,7 +821,7 @@ Proof.
   induction Step; subst s2.
   - inversion_event InEv.
     apply consistent_impl_exec in InCtr0; auto. contradiction.
-  - ctr_case_analysis CDSctr ctr. clear H8.
+  - same_ctr InEv. subst ctr.
     execute_own CDSctr H7. simpl in *.
     subst now.
     rewrite helper_1, helper_2 in H7; unfold Δ; try auto; try omega.
@@ -859,12 +840,9 @@ Proof.
         ** omega. 
       * subst c'. inversion Prim.
         contradict H9. omega.
-  - not_or ctr CDSctr H4.
-  - not_or ctr CDSctr H4.
-  - ctr_case_analysis CDSctr ctr.
-    execute_own CDSctr H5. inversion InEv.
-    apply consistent_impl_exec in InCtr0; auto. inversion H7; auto.
-    find_contradiction InEv.
+  - same_ctr InEv. subst ctr. not_or' CDSctr H4.
+  - same_ctr InEv. subst ctr. not_or' CDSctr H4.
+  - inversion_event InEv. inconsistent Cst InEv.
   - simpl in InCtr. contradiction.
 Qed.
 
@@ -909,7 +887,7 @@ Proof.
   induction Step; subst s2.
   - inversion_event InEv.
     apply consistent_impl_exec in InCtr0; auto. contradiction.
-  - ctr_case_analysis CDSctr ctr. clear H8.
+  - same_ctr InEv. subst ctr.
     execute_own CDSctr H7. simpl in *.
     subst now.
     rewrite helper_1, helper_2 in H7; unfold Δ; try auto; try omega.
@@ -927,12 +905,9 @@ Proof.
         unfold yearly_check, At.
         instantiate (2 := b2afee). instantiate (2 := 0).
         exact Exec2.
-  - not_or ctr CDSctr H4.
-  - not_or ctr CDSctr H4.
-  - ctr_case_analysis CDSctr ctr.
-    execute_own CDSctr H5. inversion InEv.
-    apply consistent_impl_exec in InCtr0; auto. inversion H7; auto.
-    find_contradiction InEv.
+  - same_ctr InEv. subst ctr. not_or' CDSctr H4.
+  - same_ctr InEv. subst ctr. not_or' CDSctr H4.
+  - inversion_event InEv. inconsistent Cst InEv.
   - simpl in InCtr. contradiction.
 Qed.
 
@@ -985,7 +960,7 @@ Proof.
   induction Step; subst s2.
   - inversion_event InEv.
     apply consistent_impl_exec in InCtr0; auto. contradiction.
-  - ctr_case_analysis CDSctr ctr. clear H8.
+  - same_ctr InEv. subst ctr.
     execute_own CDSctr H7. simpl in *.
     subst now.
     rewrite helper_1, helper_2 in H7; unfold Δ; try auto; try omega.
@@ -1004,11 +979,9 @@ Proof.
         omega.
       * subst c'. inversion Prim.
         contradict H9. omega.
-  - not_or ctr CDSctr H4.
-  - not_or ctr CDSctr H4.
-  - ctr_case_analysis CDSctr ctr.
-    inversion_event InEv.
-    apply consistent_impl_exec in InCtr0; auto. contradiction.
+  - same_ctr InEv. subst ctr. not_or' CDSctr H4.
+  - same_ctr InEv. subst ctr. not_or' CDSctr H4.
+  - inversion_event InEv. inconsistent Cst InEv.
   - apply consistent_impl_exec in InCtr0; auto. contradiction. 
 Qed.
 Print CDS_Y2_C1.
@@ -1075,7 +1048,7 @@ Proof.
   induction Step; subst s2.
   - inversion_event InEv.
     apply consistent_impl_exec in InCtr0; auto. contradiction.
-  - ctr_case_analysis CDSctr ctr. clear H8.
+  - same_ctr InEv. subst ctr.
     execute_own CDSctr H7. simpl in *.
     subst now.
     rewrite helper_1, helper_2 in H7; unfold Δ; try auto; try omega.
@@ -1089,12 +1062,9 @@ Proof.
         eapply pay_at_t_not_defaulted; eauto.
       * subst c'. inversion Prim.
       * subst c'. inversion Prim.
-  - not_or ctr CDSctr H4.
-  - not_or ctr CDSctr H4.
-  - ctr_case_analysis CDSctr ctr.
-    execute_own CDSctr H5. inversion InEv.
-    apply consistent_impl_exec in InCtr0; auto. inversion H7; auto.
-    find_contradiction InEv.
+  - same_ctr InEv. subst ctr. not_or' CDSctr H4.
+  - same_ctr InEv. subst ctr. not_or' CDSctr H4.
+  - inversion_event InEv.  inconsistent Cst InEv.
   - simpl in InCtr. contradiction.
 Qed.
 
@@ -1145,7 +1115,7 @@ Proof.
   induction Step; subst s2.
   - inversion_event InEv.
     apply consistent_impl_exec in InCtr0; auto. contradiction.
-  - ctr_case_analysis CDSctr ctr. clear H8.
+  - same_ctr InEv. subst ctr.
     execute_own CDSctr H7. simpl in *.
     subst now.
     rewrite helper_1, helper_2 in H7; unfold Δ; try auto; try omega.
@@ -1159,12 +1129,9 @@ Proof.
       * eapply exec_later_no_effect; eauto.
       * subst c'. inversion Prim.
         contradict H9. omega.
-  - not_or ctr CDSctr H4.
-  - not_or ctr CDSctr H4.
-  - ctr_case_analysis CDSctr ctr.
-    execute_own CDSctr H5. inversion InEv.
-    apply consistent_impl_exec in InCtr0; auto. inversion H7; auto.
-    find_contradiction InEv.
+  - same_ctr InEv. subst ctr. not_or' CDSctr H4.
+  - same_ctr InEv. subst ctr. not_or' CDSctr H4.
+  - inversion_event InEv. inconsistent Cst InEv.
   - simpl in InCtr. contradiction.
 Qed.
 
@@ -1216,7 +1183,7 @@ Proof.
   induction Step; subst s2.
   - inversion_event InEv.
     apply consistent_impl_exec in InCtr0; auto. contradiction.
-  - ctr_case_analysis CDSctr ctr. clear H8.
+  - same_ctr InEv. subst ctr.
     execute_own CDSctr H7. simpl in *.
     subst now.
     rewrite helper_1, helper_2 in H7; unfold Δ; try auto; try omega.
@@ -1233,12 +1200,9 @@ Proof.
         assert (H' : price = price + 0 * b2afee); try omega.
         rewrite H'.
         eapply yearly_checks_not_defaulted; eauto; try omega.
-  - not_or ctr CDSctr H4.
-  - not_or ctr CDSctr H4.
-  - ctr_case_analysis CDSctr ctr.
-    execute_own CDSctr H5. inversion InEv.
-    apply consistent_impl_exec in InCtr0; auto. inversion H7; auto.
-    find_contradiction InEv.
+  - same_ctr InEv. subst ctr. not_or' CDSctr H4.
+  - same_ctr InEv. subst ctr. not_or' CDSctr H4.
+  - inversion_event InEv. inconsistent Cst InEv.
   - simpl in InCtr. contradiction.
 Qed.
 
@@ -1293,7 +1257,7 @@ Proof.
   induction Step; subst s2.
   - inversion_event InEv.
     apply consistent_impl_exec in InCtr0; auto. contradiction.
-  - ctr_case_analysis CDSctr ctr. clear H8.
+  - same_ctr InEv. subst ctr.
     execute_own CDSctr H7. simpl in *.
     subst now.
     rewrite helper_1, helper_2 in H7; unfold Δ; try auto; try omega.
@@ -1314,11 +1278,9 @@ Proof.
         assert (H' : (price + 0 = price + 0 * b2afee)); try omega.
         rewrite H'. reflexivity.
         omega. omega.
-  - not_or ctr CDSctr H4.
-  - not_or ctr CDSctr H4.
-  - ctr_case_analysis CDSctr ctr.
-    inversion_event InEv.
-    apply consistent_impl_exec in InCtr0; auto. contradiction.
+  - same_ctr InEv. subst ctr. not_or' CDSctr H4.
+  - same_ctr InEv. subst ctr. not_or' CDSctr H4.
+  - inversion_event InEv. inconsistent Cst InEv.
   - apply consistent_impl_exec in InCtr0; auto. contradiction. 
 Qed.
 Print CDS_Y3_C1.

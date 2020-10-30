@@ -24,30 +24,29 @@ Proposition erce_I_to_O :
       tr_currency tr = USD).
 Proof.
   intros.
-  destruct H1 as [s' [Ss1 [Ss2 [E | D]]]].
+  destruct H1 as [s' [Ss1 [Ss2 [E | D]]]]; insert_consistent s Ss.
   - destruct_executed E.
-    insert_consistent s Ss.
     induction St; subst s'.
     + inversion_event Ev. find_contradiction Ev.
-    + ctr_case_analysis ctr ctr0.
+    + same_ctr Ev. subst ctr0.
       execute_own ctr H10. subst t. rewrite H3 in *.
       inversion H10. subst. clear H10.
       eexists. split.
       eapply steps_does_not_remove_transactions; eauto.
       simpl. left. trivial.
       repeat split; trivial. resolve_owner H5.
-    + not_or ctr ctr0 H7.
-    + not_or ctr ctr0 H7.
-    + ctr_case_analysis ctr ctr0. inversion_event Ev. find_contradiction Ev.
+    + same_ctr Ev. subst ctr0. not_or' ctr H7.
+    + same_ctr Ev. subst ctr0. not_or' ctr H7.
+    + inversion_event Ev. inconsistent H1 Ev.
     + find_contradiction Ev.
   - destruct_deleted D.
-    insert_consistent s Ss.
     induction St; subst s'.
-    + inversion_event Ev. find_contradiction_del Ev.
-    + ctr_case_analysis ctr ctr0. inversion_event Ev. find_contradiction_del Ev.
-    + not_or ctr ctr0 H7.
-    + not_or ctr ctr0 H7.
-    + ctr_case_analysis ctr ctr0. execute_own ctr H8.
+    + inversion_event Ev; find_contradiction_del Ev.
+    + inversion_event Ev; find_contradiction_del Ev.
+    + inversion_event Ev; find_contradiction_del Ev.
+    + inversion_event Ev; find_contradiction_del Ev.
+    + same_ctr_del Ev. subst ctr0.
+      execute_own ctr H8.
       subst t. rewrite H3 in *. inversion H8.
     + find_contradiction_del Ev.
 Qed.
@@ -72,31 +71,31 @@ Proposition erce_O_to_I :
       tr_currency tr = EUR).
 Proof.
   intros.
-  destruct H1 as [s' [Ss1 [Ss2 [E | D]]]].
+  destruct H1 as [s' [Ss1 [Ss2 [E | D]]]]; insert_consistent s Ss.
   - destruct_executed E.
-    insert_consistent s Ss.
     induction St; subst s'.
     + inversion_event Ev. find_contradiction Ev.
-    + ctr_case_analysis ctr ctr0.
+    + same_ctr Ev. subst ctr0.
       execute_own ctr H10. subst t. rewrite H3 in *.
       inversion H10. subst. clear H10.
       eexists. split.
       eapply steps_does_not_remove_transactions; eauto.
       simpl. right. left. trivial.
       repeat split; trivial. resolve_owner H5.
-    + not_or ctr ctr0 H7.
-    + not_or ctr ctr0 H7.
-    + ctr_case_analysis ctr ctr0. inversion_event Ev. find_contradiction Ev.
+    + same_ctr Ev. subst ctr0. not_or' ctr H7.
+    + same_ctr Ev. subst ctr0. not_or' ctr H7.
+    + inversion_event Ev. inconsistent H1 Ev.
     + find_contradiction Ev.
   - destruct_deleted D.
     insert_consistent s Ss.
     induction St; subst s'.
-    + inversion_event Ev. find_contradiction_del Ev.
-    + ctr_case_analysis ctr ctr0. inversion_event Ev. find_contradiction_del Ev.
-    + not_or ctr ctr0 H7.
-    + not_or ctr ctr0 H7.
-    + ctr_case_analysis ctr ctr0. execute_own ctr H8.
-      subst t. rewrite H3 in *. inversion H8.
+    + inversion_event Ev; find_contradiction_del Ev.
+    + inversion_event Ev; find_contradiction_del Ev.
+    + inversion_event Ev; find_contradiction_del Ev.
+    + inversion_event Ev; find_contradiction_del Ev.
+    + same_ctr_del Ev. subst ctr0.
+      execute_own ctr H9.
+      subst t. rewrite H3 in *. inversion H9.
     + find_contradiction_del Ev.
 Qed.
 
@@ -118,21 +117,19 @@ Proof.
   - destruct_executed E.
     induction St; subst s'.
     + inversion_event Ev. find_contradiction M.
-    + ctr_case_analysis ctr ctr0.
+    + same_ctr Ev. subst ctr0.
       execute_own ctr H6. subst t. rewrite H in *.
       inversion H6.
-    + not_or ctr ctr0 H3.
-    + not_or ctr ctr0 H3.
+    + same_ctr Ev. subst ctr0. not_or' ctr H3.
+    + same_ctr Ev. subst ctr0. not_or' ctr H3.
     + simpl. trivial.
     + simpl. trivial.
   - destruct_deleted D.
     induction St; subst s'.
-    + inversion_event Ev. find_contradiction M.
-    + ctr_case_analysis ctr ctr0.
-      execute_own ctr H6. subst t. rewrite H in *.
-      inversion H6.
-    + not_or ctr ctr0 H3.
-    + not_or ctr ctr0 H3.
+    + inversion_event Ev; find_contradiction_del Ev.
+    + inversion_event Ev. find_contradiction_del Ev.
+    + inversion_event Ev. find_contradiction_del Ev.
+    + inversion_event Ev. find_contradiction_del Ev.
     + simpl. trivial.
     + simpl. trivial.
 Qed.

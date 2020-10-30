@@ -7,8 +7,6 @@ Scheme Equality for list.
 
 
 Definition Δ := 30.
-Parameter INF : nat.
-Axiom infinite : forall n, n < INF.
 Definition FRESHNESS := 2.
 
 
@@ -35,6 +33,10 @@ Definition beq_currency (c c' : Currency) :=
 
 Definition Address := nat. (* convention: 0 stands for 0x0 *)
 Definition Time := nat.
+Inductive TimeInterval :=
+| interval : nat -> nat -> TimeInterval
+| after : nat -> TimeInterval
+| before : nat -> TimeInterval.
 
 Definition Balance := Address -> Currency -> Z.
 Definition update (balance : Balance) (a : Address)
@@ -44,7 +46,7 @@ Definition update (balance : Balance) (a : Address)
     then amount
     else (balance x y).
 
-
+Scheme Equality for TimeInterval.
 Inductive Primitive :=
 (* basic primitives *)
 | Zero      :                                      Primitive
@@ -56,11 +58,11 @@ Inductive Primitive :=
 | And       : Primitive -> Primitive ->            Primitive
 | Or        : Primitive -> Primitive ->            Primitive
 | If        : Address -> Primitive -> Primitive -> Primitive
-| Timebound : nat -> nat -> Primitive ->           Primitive.
-
-Definition At (t : nat) (p : Primitive) := Timebound (t - Δ) (t + Δ) p.
-Definition Before (t : nat) (p : Primitive) := Timebound 0 t p.
-Definition After (t : nat) (p : Primitive) := Timebound t INF p.
+| Timebound : TimeInterval -> Primitive ->         Primitive.
+Scheme Equality for Primitive.
+Definition At (t : nat) (p : Primitive) := Timebound (interval (t - Δ) (t + Δ)) p.
+Definition Before (t : nat) (p : Primitive) := Timebound (before t) p.
+Definition After (t : nat) (p : Primitive) := Timebound (after t) p.
 Definition Sell (n : nat) (c : Currency) (p : Primitive)
   := And (Give (Scale n (One c))) p.
 
@@ -187,14 +189,23 @@ Fixpoint execute
       then (execute c2 scale I O balance time gtw ctr_id dsc_id nextId ledger)
       else (execute c1 scale I O balance time gtw ctr_id dsc_id nextId ledger)
     end
-  | Timebound t0 t1 p =>
+  | Timebound (interval t0 t1) p =>
     if (t1 <? time)
     then None
     else
-      if (t0 <? time)
+      if (t0 <=? time)
       then (execute p scale I O balance time gtw ctr_id dsc_id nextId ledger)
       else Some (result balance
-                        [(finctr (S nextId) dsc_id (Timebound t0 t1 p) I O O scale)] (S (S nextId)) ledger)
+                        [(finctr (S nextId) dsc_id (Timebound (interval t0 t1) p) I O O scale)] (S (S nextId)) ledger)
+  | Timebound (before t0) p =>
+    if (t0 <? time)
+    then None
+    else (execute p scale I O balance time gtw ctr_id dsc_id nextId ledger)
+  | Timebound (after t0) p =>
+    if (t0 <? time)
+    then (execute p scale I O balance time gtw ctr_id dsc_id nextId ledger)
+    else Some (result balance
+                        [(finctr (S nextId) dsc_id (Timebound (after t0) p) I O O scale)] (S (S nextId)) ledger)
   | Or c1 c2 =>
     Some (result balance
                  [(finctr (S nextId) dsc_id (Or c1 c2) I O O scale)] (S (S nextId)) ledger)
@@ -262,7 +273,10 @@ A Findel contract has the following execution model~\cite{findel}:
 
 *)
 
-Axiom ctr_eq_dec : forall c c' : FinContract, {c = c'} + {c <> c}.
+Definition ctr_eq_dec : forall c c' : FinContract, {c = c'} + {c <> c'}.
+Proof.
+  decide equality; try decide equality; try decide equality; try decide equality.
+Qed.
 
 Fixpoint rm (c : FinContract) (l : list FinContract) :=
   match l with
@@ -288,7 +302,7 @@ Definition is_or  (primitive: Primitive):=
 
 Definition is_timebound  (primitive: Primitive):=
   match primitive with
-  | Timebound _ _ _ => True
+  | Timebound _ _ => True
   | _ => False
   end.
 
